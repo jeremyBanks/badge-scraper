@@ -117,7 +117,7 @@ class BadgeData(object):
                 .partition('<')[0])
 
             if page_number > page_count:
-                logger.info("Reached end of list; page does not exist.")
+                self.logger.info("Reached end of list; page does not exist.")
                 break
 
             without_leading_crap = html.partition(
