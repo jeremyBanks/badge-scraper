@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
+import calendar
 import collections.abc
 import csv
+import datetime
 import itertools
 import logging
 import sys
@@ -9,9 +11,17 @@ import time
 import requests
 
 
-class BadgeData(object):
+def timestamp_from_iso1608(s):
+    """Returns the unix timestamp for a Stack Exchange ISO 1608 date/time."""
+    return calendar.timegm(
+        datetime.datetime.strptime(s, '%Y-%m-%d %H:%M:%SZ').timetuple())
+
+
+class BadgeData(collections.abc.Iterable):
     """Scrapes and persists a record of all instances of a particular
     badge that have been awarded on a Stack Exchange site.
+
+    Iteration over BadgeData yields all instances in chronological order.
     """
 
     FIELD_NAMES = 'user_id', 'utc_time'
@@ -25,6 +35,9 @@ class BadgeData(object):
 
         self.instances = set()
         self.load()
+
+    def __iter__(self):
+        return iter(sorted(self.instances, key=lambda badge: badge.timestamp))
 
     def load(self):
         """Loads any existing data from the associated CSV file."""
@@ -54,7 +67,13 @@ class BadgeData(object):
                             self.FIELD_NAMES, header_row))
 
                 for row in reader:
-                    user_id, utc_time = row
+                    user_id, utc_time_raw = row
+
+                    try:
+                        utc_time = int(utc_time_raw)
+                    except ValueError:
+                        utc_time = timestamp_from_iso1608(utc_time_raw)
+
                     self.instances.add(Badge(
                         badge_id=self.badge_id,
                         user_id=int(user_id),
@@ -71,9 +90,17 @@ class BadgeData(object):
                 writer = csv.writer(f)
                 writer.writerow(self.FIELD_NAMES)
 
+    def update(self, stop_on_existing=False):
+        """Scrape the site, saving all new badge instances to the data file.
 
-    def update(self):
-        """Scrape the site, saving all new badge instances to the data file."""
+        If stop_on_existing is True, this will stop scraping once it sees see a
+        badge that has already been recorded. Otherwise, it will continue.
+
+        stop_on_existing should be specified if you know that self.instances
+        contains *all* instances up to any specific point in time.
+        PLEASE NOTE that BadgeData's implementation does not guarauntee this
+        if an update() has been interrupted.
+        """
 
         try:
             f = open(self.filename, 'at', newline='')
@@ -90,10 +117,13 @@ class BadgeData(object):
 
             for badge in self._scrape_all_badges():
                 if badge not in self.instances:
-                    writer.writerow((badge.user_id, badge.utc_time))
+                    writer.writerow((badge.user_id, badge.timestamp))
                     self.instances.add(badge)
                     self.logger.info("Scraped badge: %r.", badge)
                 else:
+                    if stop_on_existing:
+                        return
+
                     self.logger.warn("Scraped already-known badge %r.", badge)
 
             self.logger.info("Reached end of badge list. Update complete.")
@@ -131,9 +161,10 @@ class BadgeData(object):
                 user_id = int((row_piece
                     .partition('<a href="/users/')[2]
                     .partition('/')[0]))
-                utc_time = (row_piece
+                utc_time_raw = (row_piece
                     .partition('Awarded <span title="')[2]
                     .partition('"')[0])
+                utc_time = timestamp_from_iso1608(utc_time_raw)
 
                 yield Badge(
                     badge_id=self.badge_id, user_id=user_id, utc_time=utc_time)
@@ -146,28 +177,45 @@ class Badge(collections.abc.Hashable):
     def __init__(self, badge_id, user_id, utc_time):
         self.badge_id = badge_id
         self.user_id = user_id
-        self.utc_time = utc_time
+        self.timestamp = utc_time
 
     def __eq__(self, other):
         return (self.badge_id == other.badge_id and
                 self.user_id == other.user_id and
-                self.utc_time == other.utc_time)
+                self.timestamp == other.timestamp)
 
     def __hash__(self):
-        return hash((self.badge_id, self.user_id, self.utc_time))
+        return hash((self.badge_id, self.user_id, self.timestamp))
 
     def __repr__(self):
         return ('{0.__class__.__name__}(badge_id={0.badge_id!r}, '
-                'user_id={0.user_id!r}, utc_time={0.utc_time!r}'
+                'user_id={0.user_id!r}, utc_time={0.timestamp!r})'
                 .format(self))
 
 
-def main():
+def main(*args):
+    flags = set(args)
+
     logging.basicConfig(level=logging.DEBUG)
     so_constituents = BadgeData(
         host='stackoverflow.com', badge_id=1974, filename='constituents.csv')
-    so_constituents.update()
+    so_constituents.update(
+        stop_on_existing=bool(flags.intersection(['-x', '--stop-on-existing'])))
 
+    badges_by_election = []
+    latest_timestamp = float('-infinity')
+
+    for badge in so_constituents:
+        if badge.timestamp < latest_timestamp + (7 * 24 * 60 * 60):
+            badges_by_election[-1].append(badge)
+        else:
+            badges_by_election.append([badge])
+
+        latest_timestamp = badge.timestamp
+
+    print(
+        "There have been {} votes in the latest election."
+        .format(len(badges_by_election[-1])))
 
 if __name__ == '__main__':
     sys.exit(main(*sys.argv[1:]))
