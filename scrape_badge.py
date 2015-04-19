@@ -33,11 +33,19 @@ class BadgeData(collections.abc.Iterable):
         self.badge_id = badge_id
         self.filename = filename
 
-        self.instances = set()
+        self._instances = set()
         self.load()
 
+    def __repr__(self):
+        return (
+            '<{0.__class__.__name__} for {0.host}/badges/{0.badge_id} with {1} '
+            'instances>'.format(self, len(self._instances)))
+
     def __iter__(self):
-        return iter(sorted(self.instances, key=lambda badge: badge.timestamp))
+        return iter(sorted(self._instances, key=lambda badge: badge.timestamp))
+
+    def __len__(self):
+        return len(self._instances)
 
     def load(self):
         """Loads any existing data from the associated CSV file."""
@@ -67,20 +75,21 @@ class BadgeData(collections.abc.Iterable):
                             self.FIELD_NAMES, header_row))
 
                 for row in reader:
-                    user_id, utc_time_raw = row
+                    user_id, timestamp_raw = row
 
                     try:
-                        utc_time = int(utc_time_raw)
+                        timestamp = int(timestamp_raw)
                     except ValueError:
-                        utc_time = timestamp_from_iso1608(utc_time_raw)
+                        timestamp = timestamp_from_iso1608(timestamp_raw)
 
-                    self.instances.add(Badge(
+                    self._instances.add(Badge(
                         badge_id=self.badge_id,
                         user_id=int(user_id),
-                        utc_time=utc_time))
+                        timestamp=timestamp))
 
             self.logger.info(
-                "Read %s instances from badge data file.", len(self.instances))
+                "Read %s instances from data file for %s.",
+                len(self._instances), self)
         else:
             self.logger.info(
                 "There is no existing badge data file. "
@@ -96,7 +105,7 @@ class BadgeData(collections.abc.Iterable):
         If stop_on_existing is True, this will stop scraping once it sees see a
         badge that has already been recorded. Otherwise, it will continue.
 
-        stop_on_existing should be specified if you know that self.instances
+        stop_on_existing should be specified if you know that self._instances
         contains *all* instances up to any specific point in time.
         PLEASE NOTE that BadgeData's implementation does not guarauntee this
         if an update() has been interrupted.
@@ -116,9 +125,9 @@ class BadgeData(collections.abc.Iterable):
                 writer.writerow(self.FIELD_NAMES)
 
             for badge in self._scrape_all_badges():
-                if badge not in self.instances:
+                if badge not in self._instances:
                     writer.writerow((badge.user_id, badge.timestamp))
-                    self.instances.add(badge)
+                    self._instances.add(badge)
                     self.logger.info("Scraped badge: %r.", badge)
                 else:
                     if stop_on_existing:
@@ -161,23 +170,23 @@ class BadgeData(collections.abc.Iterable):
                 user_id = int((row_piece
                     .partition('<a href="/users/')[2]
                     .partition('/')[0]))
-                utc_time_raw = (row_piece
+                timestamp_raw = (row_piece
                     .partition('Awarded <span title="')[2]
                     .partition('"')[0])
-                utc_time = timestamp_from_iso1608(utc_time_raw)
+                timestamp = timestamp_from_iso1608(timestamp_raw)
 
                 yield Badge(
-                    badge_id=self.badge_id, user_id=user_id, utc_time=utc_time)
+                    badge_id=self.badge_id, user_id=user_id, timestamp=timestamp)
 
             self.logger.debug("Scraped page %s/%s.", page_number, page_count)
 
 class Badge(collections.abc.Hashable):
     """An awarded instance of a particular badge."""
 
-    def __init__(self, badge_id, user_id, utc_time):
+    def __init__(self, badge_id, user_id, timestamp):
         self.badge_id = badge_id
         self.user_id = user_id
-        self.timestamp = utc_time
+        self.timestamp = timestamp
 
     def __eq__(self, other):
         return (self.badge_id == other.badge_id and
@@ -189,33 +198,44 @@ class Badge(collections.abc.Hashable):
 
     def __repr__(self):
         return ('{0.__class__.__name__}(badge_id={0.badge_id!r}, '
-                'user_id={0.user_id!r}, utc_time={0.timestamp!r})'
+                'user_id={0.user_id!r}, timestamp={0.timestamp!r})'
                 .format(self))
 
 
 def main(*args):
     flags = set(args)
-
     logging.basicConfig(level=logging.DEBUG)
+
     so_constituents = BadgeData(
         host='stackoverflow.com', badge_id=1974, filename='constituents.csv')
-    so_constituents.update(
-        stop_on_existing=bool(flags.intersection(['-x', '--stop-on-existing'])))
+    so_caucus = BadgeData(
+        host='stackoverflow.com', badge_id=1973, filename='caucus.csv')
 
-    badges_by_election = []
-    latest_timestamp = float('-infinity')
+    for badge_data in [so_constituents]: # , so_caucus]:
+        badge_data.update(stop_on_existing=bool(
+            flags.intersection(['-x', '--stop-on-existing'])))
+
+    constituents_by_election = []
+    latest_timestamp = 0
 
     for badge in so_constituents:
         if badge.timestamp < latest_timestamp + (7 * 24 * 60 * 60):
-            badges_by_election[-1].append(badge)
+            constituents_by_election[-1].append(badge)
         else:
-            badges_by_election.append([badge])
+            constituents_by_election.append([badge])
 
         latest_timestamp = badge.timestamp
 
-    print(
-        "There have been {} votes in the latest election."
-        .format(len(badges_by_election[-1])))
+    print("Votes by election:")
+    for n, badges in enumerate(constituents_by_election, start=1):
+        print("  {}: {}".format(n, len(badges)))
+    print("Total:", len(so_constituents))
+
+    constituent_timestamps = list(sorted(
+        badge.timestamp for badge in so_constituents))
+    print("Earliest timestamp:", constituent_timestamps[0])
+    print("Latest timestamp:", constituent_timestamps[-1])
+
 
 if __name__ == '__main__':
     sys.exit(main(*sys.argv[1:]))
