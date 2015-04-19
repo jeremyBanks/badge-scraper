@@ -138,7 +138,7 @@ class BadgeData(object):
                 yield Badge(
                     badge_id=self.badge_id, user_id=user_id, utc_time=utc_time)
 
-        self.logger.debug("Scraped page %s/%s.", page_number, page_count)
+            self.logger.debug("Scraped page %s/%s.", page_number, page_count)
 
 class Badge(collections.abc.Hashable):
     """An awarded instance of a particular badge."""
