@@ -242,14 +242,16 @@ def main(*args):
     for n, badges in enumerate(constituents_by_election, start=1):
         print("  {}: {}".format(n, len(badges)))
     print("Total:", len(so_constituents))
-
+    print()
     print("Visited caucus by election:")
     for n, badges in enumerate(caucus_by_election, start=1):
         print("  {}: {}".format(n, len(badges)))
     print("Total:", len(so_caucus))
-
+    print()
     latest_election_constituents = constituents_by_election[-1]
-    voting_start_timestamp = latest_election_constituents[0].timestamp
+    latest_election_caucus = caucus_by_election[-1]
+
+    voting_start_timestamp = latest_election_caucus[0].timestamp
 
     logger.info("Saving latest-election-cumulative.csv")
     with open('latest-election-cumulative.csv', 'wt') as f:
@@ -259,6 +261,15 @@ def main(*args):
         for vote_count, badge in enumerate(latest_election_constituents, start=1):
             vote_offset = badge.timestamp - voting_start_timestamp
             writer.writerow((vote_offset, vote_count))
+
+    logger.info("Saving latest-election-cumulative-caucus.csv")
+    with open('latest-election-cumulative-cacus.csv', 'wt') as f:
+        writer = csv.writer(f)
+        writer.writerow(('time offset', 'cumulative caucused'))
+
+        for caucus_count, badge in enumerate(latest_election_caucus, start=1):
+            caucus_offset = badge.timestamp - voting_start_timestamp
+            writer.writerow((caucus_offset, caucus_count))
 
 if __name__ == '__main__':
     sys.exit(main(*sys.argv[1:]))
