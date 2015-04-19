@@ -28,7 +28,7 @@ class BadgeData(collections.abc.Iterable):
     """
 
     FIELD_NAMES = 'user_id', 'utc_time'
-    REQUEST_INTERVAL_SECONDS = 2.0
+    REQUEST_INTERVAL_SECONDS = .5
     logger = logging.getLogger(__name__).getChild('BadgeData')
 
     def __init__(self, host, badge_id, filename):
@@ -183,6 +183,21 @@ class BadgeData(collections.abc.Iterable):
 
             self.logger.debug("Scraped page %s/%s.", page_number, page_count)
 
+    def grouped_by_timestamp(self, group_duration=7 * 24 * 60 * 60):
+        groups = []
+        latest_timestamp = -1
+
+        for badge in self:
+            if badge.timestamp < latest_timestamp + group_duration:
+                groups[-1].append(badge)
+            else:
+                groups.append([badge])
+
+            latest_timestamp = badge.timestamp
+
+        return groups
+
+
 class Badge(collections.abc.Hashable):
     """An awarded instance of a particular badge."""
 
@@ -206,6 +221,8 @@ class Badge(collections.abc.Hashable):
 
 
 def main(*args):
+    logger.warn("This data seems very questionable.")
+
     flags = set(args)
     logging.basicConfig(level=logging.DEBUG)
 
@@ -214,30 +231,22 @@ def main(*args):
     so_caucus = BadgeData(
         host='stackoverflow.com', badge_id=1973, filename='caucus.csv')
 
-    for badge_data in [so_constituents]: # , so_caucus]:
+    for badge_data in [so_constituents , so_caucus]:
         badge_data.update(stop_on_existing=bool(
             flags.intersection(['-x', '--stop-on-existing'])))
 
-    constituents_by_election = []
-    latest_timestamp = 0
+    constituents_by_election = so_constituents.grouped_by_timestamp()
+    caucus_by_election = so_caucus.grouped_by_timestamp()
 
-    for badge in so_constituents:
-        if badge.timestamp < latest_timestamp + (7 * 24 * 60 * 60):
-            constituents_by_election[-1].append(badge)
-        else:
-            constituents_by_election.append([badge])
-
-        latest_timestamp = badge.timestamp
-
-    print("Votes by election:")
+    print("Voters by election:")
     for n, badges in enumerate(constituents_by_election, start=1):
         print("  {}: {}".format(n, len(badges)))
     print("Total:", len(so_constituents))
 
-    constituent_timestamps = list(sorted(
-        badge.timestamp for badge in so_constituents))
-    print("Earliest timestamp:", constituent_timestamps[0])
-    print("Latest timestamp:", constituent_timestamps[-1])
+    print("Visited caucus by election:")
+    for n, badges in enumerate(caucus_by_election, start=1):
+        print("  {}: {}".format(n, len(badges)))
+    print("Total:", len(so_caucus))
 
     latest_election_constituents = constituents_by_election[-1]
     voting_start_timestamp = latest_election_constituents[0].timestamp
