@@ -2,6 +2,7 @@
 import csv
 import json
 import logging
+import math
 import os
 import sys
 
@@ -28,9 +29,11 @@ def get_badge_data_and_writer(badge_id, filename):
         badge_data = scraping.BadgeData(
             host='stackoverflow.com', badge_id=badge_id)
 
+    print("Loaded {} {}s.".format(len(badge_data), filename))
+
     def write():
         with open('data/' + filename + '.json', 'wt') as f:
-            json.dump(badge_data.to_json(), f, indent=2)
+            json.dump(badge_data.to_json(), f)
 
     return badge_data, write
 
@@ -38,16 +41,14 @@ def get_badge_data_and_writer(badge_id, filename):
 def main(*args):
     logging.basicConfig(level=logging.DEBUG)
 
-    logger.warn("This data seems very questionable.")
-
     flags = set(args)
 
     so_sheriffs, write_sherrifs = get_badge_data_and_writer(
         badge_id=3109, filename='sherrif')
     so_constituents, write_constituents = get_badge_data_and_writer(
-        badge_id=1974, filename='constituents')
+        badge_id=1974, filename='constituent')
     so_caucus, write_caucus = get_badge_data_and_writer(
-        badge_id=1974, filename='caucus')
+        badge_id=1973, filename='caucus')
 
     so_sheriffs.update()
     write_sherrifs()
@@ -60,51 +61,29 @@ def main(*args):
         flags.intersection(['-x', '--stop-on-existing'])))
     write_caucus()
 
-    noise_limit = 128
+    constituents_by_reason = so_constituents.by_reason()
+    caucus_by_reason = so_caucus.by_reason()
 
-    print("Stack Overfow's Sheriffs ==", list(so_sheriffs))
-    print()
-    
-    constituents_by_election = so_constituents.grouped_by_timestamp(
-        drop_groups_of_fewer_than=noise_limit)
-    caucus_by_election = so_caucus.grouped_by_timestamp(
-        drop_groups_of_fewer_than=noise_limit)
+    assert len(constituents_by_reason) == len(caucus_by_reason)
 
-    assert len(constituents_by_election) == len(caucus_by_election)
+    latest_constituents = constituents_by_reason[
+        'for an <a href="/election/6">election</a>']
 
-    print("Info by election:")
-    for n, (did, could) in enumerate(
-            zip(constituents_by_election, caucus_by_election),
-            start=2):
-        print(
-            "  {:2d}: {:7d} ({:4.1f}%) constituents out of {:8d} caucus"
-            .format(
-                n, len(did), 100 * (len(did) / len(could)), len(could)))
-    print("Total:", len(so_constituents))
-    print()
+    first_vote_timestamp = latest_constituents[0].timestamp
+    last_vote_timestamp = latest_constituents[0].timestamp
 
-    latest_election_constituents = constituents_by_election[-1]
-    latest_election_caucus = caucus_by_election[-1]
+    hour_duration = 60 * 60
+    votes_by_hour = [
+        0 for _ in range(int(1 + math.floor(last_vote_timestamp - first_vote_timestamp)))]
 
-    voting_start_timestamp = latest_election_caucus[0].timestamp
+    for badge in latest_constituents:
+        i = int(math.floor((badge.timestamp - first_vote_timestamp) / hour_duration))
+        votes_by_hour[i] += 1 
 
-    print("Saving latest-election-cumulative.csv")
-    with open('data/latest-election-cumulative.csv', 'wt') as f:
-        writer = csv.writer(f)
-        writer.writerow(('time offset', 'cumulative votes'))
-
-        for vote_count, badge in enumerate(latest_election_constituents, start=1):
-            vote_offset = badge.timestamp - voting_start_timestamp
-            writer.writerow((vote_offset, vote_count))
-
-    print("Saving latest-election-cumulative-caucus.csv")
-    with open('data/latest-election-cumulative-cacus.csv', 'wt') as f:
-        writer = csv.writer(f)
-        writer.writerow(('time offset', 'cumulative caucused'))
-
-        for caucus_count, badge in enumerate(latest_election_caucus, start=1):
-            caucus_offset = badge.timestamp - voting_start_timestamp
-            writer.writerow((caucus_offset, caucus_count))
+    chart = pygal.StackedLine()
+    chart.add('votes by hour', votes_by_hour)
+    chart.render_to_file('data/latest-election-cumulative.svg')
+    print("wrote data/latest-election-cumulative.svg")
 
 if __name__ == '__main__':
     sys.exit(main(*sys.argv[1:]))

@@ -74,15 +74,16 @@ class BadgeData(collections.abc.Iterable):
         if an update() has been interrupted.
         """
 
+        previously_existing = set(self._instances)
+
         for badge in self._scrape_all_badges():
             if badge not in self._instances:
                 self._instances.add(badge)
                 self.logger.info("Scraped badge: %r.", badge)
-            else:
+            elif badge in previously_existing:
                 self.logger.info("Scraped already-known badge %r.", badge)
-
-                if stop_on_existing:
-                    return
+                return
+            # else it's probably slight page overlap from data changing
 
         self.logger.info("Reached end of badge list. Update complete.")
 
@@ -128,23 +129,13 @@ class BadgeData(collections.abc.Iterable):
         for row_piece in row_pieces:
             yield Badge(badge_id=self.badge_id, html=row_piece)
 
-    def grouped_by_timestamp(self, group_duration=7 * 24 * 60 * 60,
-                             drop_groups_of_fewer_than=0):
-        groups = []
-        latest_timestamp = -1
+    def by_reason(self):
+        by_reason = {}
 
         for badge in self:
-            if badge.timestamp < latest_timestamp + group_duration:
-                groups[-1].append(badge)
-            else:
-                groups.append([badge])
+            by_reason.setdefault(badge.for_what, []).append(badge)
 
-            latest_timestamp = badge.timestamp
-
-        filtered_groups = [
-            g for g in groups if len(g) >= drop_groups_of_fewer_than]
-
-        return filtered_groups
+        return by_reason
 
 
 class Badge(collections.abc.Hashable):
