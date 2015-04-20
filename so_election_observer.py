@@ -58,7 +58,11 @@ def get_badge_data_and_write_function(badge_id, filename):
 
 
 def main(*args):
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='\n' + ' ' *   2 + '[%(asctime)23s] %(pathname)s:%(lineno)d\n' +
+               ' ' *  14 + '%(levelname)10s in %(name)s\n' +
+               '%(message)s')
 
     flags = set(args)
 
@@ -81,6 +85,8 @@ def main(*args):
     constituents_by_reason = so_constituents.by_reason()
     caucus_by_reason = so_caucus.by_reason()
 
+    logger.info("Badges grouped by election.")
+
     assert len(constituents_by_reason) == len(caucus_by_reason)
 
     latest_constituents = constituents_by_reason[
@@ -88,37 +94,59 @@ def main(*args):
     latest_caucus = caucus_by_reason[
         'for an <a href="/election/6">election</a>']
 
-    hour_duration = 60 * 60
+    chunk_duration = 15 * 60
 
-    election_start_timestamp = min(
-        badge.timestamp for badge in latest_constituents + latest_caucus)
-    election_end_timestamp = max(
-        badge.timestamp for badge in latest_constituents + latest_caucus)
-    election_hours = int(
+    election_start_timestamp = min([
+        latest_constituents[0].timestamp, latest_caucus[0].timestamp])
+    election_end_timestamp = max([
+        latest_constituents[-1].timestamp, latest_caucus[-1].timestamp])
+    election_chunks = int(
         1 + math.floor(election_end_timestamp - election_start_timestamp) /
-        hour_duration)
+        chunk_duration)
 
-    constituents_by_hour = [0 for _ in range(election_hours)]
+    logger.info("Grouping constituent badges into chunks.")
+
+    constituents_by_chunk = [0 for _ in range(election_chunks)]
 
     for badge in latest_constituents:
-        constituents_by_hour[int(math.floor(badge.timestamp /  hour_duration))] += 1
+        constituents_by_chunk[
+            int(math.floor(
+                (badge.timestamp - election_start_timestamp) /
+                chunk_duration))] += 1
 
-    caucus_by_hour = [0 for _ in range(election_hours)]
+    logger.info("Grouping caucus badges into chunks.")
+
+    caucus_by_chunk = [0 for _ in range(election_chunks)]
 
     for badge in latest_caucus:
-        caucus_by_hour[int(math.floor(badge.timestamp /  hour_duration))] += 1
+        caucus_by_chunk[
+            int(math.floor(
+                (badge.timestamp - election_start_timestamp) /
+                chunk_duration))] += 1
+
+    logger.info("Generating graph.")
 
     chart = pygal.Line(
-        title="Latest Election Activity by Hour",
+        title="Latest Election Activity by chunk",
         y_title="Users",
-        x_title="Hour",
-        interpolate='cubic')
-    chart.add('constituents', constituent_by_hour)
-    chart.add('caucus', caucus_by_hour)
+        x_title="Quarter-hours",
+        dots_size=1,
+        range=(0, 512),
+        width=1024,
+        height=768,
+        fill=True,
+        value_formatter=lambda n: str(int(n)),
+        legend_at_bottom=True,
+        x_labels=[str(n) for n, _ in enumerate(caucus_by_chunk, start=1)],
+        interpolate='cubic',
+        style=pygal.style.RedBlueStyle
+    )
+    chart.add('constituents', constituents_by_chunk)
+    chart.add('caucus', caucus_by_chunk)
 
     chart.render_to_file('data/latest-election.svg')
     logger.info("wrote data/latest-election.svg")
-    
+
     write_constituents()
     write_caucus()
 

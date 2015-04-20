@@ -181,19 +181,12 @@ class Badge(collections.abc.Hashable):
             badge_id=badge_id,
             html=data['html'])
 
-        assert self.for_what == data['for_what']
-        assert self.timestamp == data['timestamp']
-        assert self.stack_time == data['stack_time']
-
         return self
 
     def to_json(self):
         return {
             'user_id': self.user_id,
-            'html': self.html,
-            'for_what': self.for_what,
-            'stack_time': self.stack_time,
-            'timestamp': self.timestamp
+            'html': self.html
         } 
 
     def __eq__(self, other):
