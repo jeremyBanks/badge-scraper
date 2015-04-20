@@ -17,53 +17,55 @@ import scraping
 logger = logging.getLogger(__name__)
 
 
-def get_badge_data_and_write_function(badge_id, filename):
-    os.makedirs('data', exist_ok=True)
-
-    logger.info("Loading {} badges...".format(filename))
-
-    try:
-        f = lzma.open('data/' + filename + '.json.xz', 'rt') 
-    except FileNotFoundError:
-        try:
-            f = lzma.open('data/' + filename + '.json.lzma', 'rt') 
-        except FileNotFoundError:
-            try:
-                f = bz2.open('data/' + filename + '.json.bz2', 'rt') 
-            except FileNotFoundError:
-                try:
-                    f = gzip.open('data/' + filename + '.json.gz', 'rt') 
-                except FileNotFoundError:
-                    try:
-                        f = open('data/' + filename + '.json', 'rt') 
-                    except FileNotFoundError:
-                        f = None
-
-    if f:
-        with f:
-            badge_data = scraping.BadgeData.from_json(json.load(f))
-    else:
-        badge_data = scraping.BadgeData(
-            host='stackoverflow.com', badge_id=badge_id)
-
-    logger.info("...loaded {} {} badges.".format(len(badge_data), filename))
-
-    def write():
-        logger.info("Writing {} {} badges...".format(len(badge_data), filename))
-        with lzma.open('data/' + filename + '.json.xz', 'wt') as f:
-            json.dump(badge_data.to_json(), f)
-        logger.info("...wrote {} {} badges.".format(len(badge_data), filename))
-
-    return badge_data, write
+LATEST_ELECTION_REASON = 'for an <a href="/election/6">election</a>'
 
 
 def main(*args):
+    def get_badge_data_and_write_function(badge_id, filename):
+        os.makedirs('data', exist_ok=True)
+
+        logger.info("Loading {} badges...".format(filename))
+
+        try:
+            f = lzma.open('data/' + filename + '.json.xz', 'rt') 
+        except FileNotFoundError:
+            try:
+                f = lzma.open('data/' + filename + '.json.lzma', 'rt') 
+            except FileNotFoundError:
+                try:
+                    f = bz2.open('data/' + filename + '.json.bz2', 'rt') 
+                except FileNotFoundError:
+                    try:
+                        f = gzip.open('data/' + filename + '.json.gz', 'rt') 
+                    except FileNotFoundError:
+                        try:
+                            f = open('data/' + filename + '.json', 'rt') 
+                        except FileNotFoundError:
+                            f = None
+
+        if f:
+            with f:
+                badge_data = scraping.BadgeData.from_json(json.load(f))
+        else:
+            badge_data = scraping.BadgeData(
+                host='stackoverflow.com', badge_id=badge_id)
+
+        logger.info("...loaded {} {} badges.".format(len(badge_data), filename))
+
+        def write():
+            logger.info("Writing {} {} badges...".format(len(badge_data), filename))
+            with lzma.open('data/' + filename + '.json.xz', 'wt') as f:
+                json.dump(badge_data.to_json(), f)
+            logger.info("...wrote {} {} badges.".format(len(badge_data), filename))
+
+        return badge_data, write
+
     logging.basicConfig(
         level=logging.DEBUG,
         format='\n'
                '  ' + '_' * 76 + '  \n'
-               '  | %(asctime)23s %(pathname)44s:%(lineno)-4s|  \n'
-               '__| %(levelname)-10s              %(name)48s |__\n'
+               '  | %(asctime)23s %(pathname)47s:%(lineno)-4s \n'
+               '__| %(levelname)-10s              %(name)51s \n'
                '\n'
                '%(message)s')
 
@@ -96,10 +98,8 @@ def main(*args):
 
     assert len(constituents_by_reason) == len(caucus_by_reason)
 
-    latest_constituents = constituents_by_reason[
-        'for an <a href="/election/6">election</a>']
-    latest_caucus = caucus_by_reason[
-        'for an <a href="/election/6">election</a>']
+    latest_constituents = constituents_by_reason[LATEST_ELECTION_REASON]
+    latest_caucus = caucus_by_reason[LATEST_ELECTION_REASON]
 
     chunk_duration = 15 * 60
 
@@ -142,13 +142,10 @@ def main(*args):
         width=1024,
         height=768,
         value_formatter=lambda n: str(int(n)),
-        legend_at_bottom=True,
-        style=pygal.style.LightStyle
+        legend_at_bottom=True
     )
     chart.add('constituents', constituents_by_chunk)
-    chart.add('caucus', [n_constituents
-                         for n_caucus, n_constituents
-                         in zip(caucus_by_chunk, constituents_by_chunk)])
+    chart.add('caucus', caucus_by_chunk)
 
     chart.render_to_file('data/latest-election.svg')
     logger.info("wrote data/latest-election.svg")
