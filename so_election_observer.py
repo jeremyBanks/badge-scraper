@@ -71,11 +71,6 @@ def get_badge_data_and_write_function(badge_id, filename, require_file=False):
 
 
 def main(*args):
-    so_publicist, write_publicist = get_badge_data_and_write_function(
-        badge_id=262, filename='publicist')
-    so_publicist.update()
-    write_publicist()
-
     logging.basicConfig(
         level=logging.INFO,
         format='\n'
@@ -140,7 +135,7 @@ def main(*args):
 
     constituents_by_chunk = [0 for _ in range(election_chunks)]
 
-    first_constituent_index = len(election_chunks)
+    first_constituent_index = len(constituents_by_chunk)
     for badge in latest_constituents:
         index = int(math.floor(
             (badge.timestamp - election_start_timestamp) /
