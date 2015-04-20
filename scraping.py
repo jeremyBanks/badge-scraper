@@ -141,46 +141,50 @@ class BadgeData(collections.abc.Iterable):
 
     def _scrape_all_badges(self):
         """Yields instances of all badges on the site, scraping them
-        one page at a time.
+        one page at a time. May return duplicates.
         """
+
+        page_count_values = []
 
         for page_number in itertools.count(1):
             time.sleep(self.REQUEST_INTERVAL_SECONDS)
+
             url = 'http://{}/help/badges/{}?page={}'.format(
                 self.host, self.badge_id, page_number)
 
-            html = requests.get(url).text
+            response = requests.get(url)
+            yield from self._scrape_page(response, page_count_values)
 
-            # HACK(TO͇̹̺ͅƝ̴ȳ̳ TH̘Ë͖́̉ ͠P̯͍̭O̚​N̐Y̡)
-
-            page_count = int(html
-                .rpartition('<span class="page-numbers">')[2]
-                .partition('<')[0])
-
-            if page_number > page_count:
+            if page_number > page_count_values[-1]:
                 self.logger.info("Reached end of list; page does not exist.")
-                break
 
-            without_leading_crap = html.partition(
-                '<div class="single-badge-table')[2]
-            also_without_trailing_crap = without_leading_crap.partition(
-                '<div class="pager')[0]
-            row_pieces = also_without_trailing_crap.split(
-                '<div class="single-badge-row-reason')[1:]
+            self.logger.debug("Scraped page %s/%s", page_number, page_count)
 
-            for row_piece in row_pieces:
-                user_id = int((row_piece
-                    .partition('<a href="/users/')[2]
-                    .partition('/')[0]))
-                timestamp_raw = (row_piece
-                    .partition('Awarded <span title="')[2]
-                    .partition('"')[0])
-                timestamp = timestamp_from_iso1608(timestamp_raw)
+    def _scrape_response(self, response, page_count_values=None):
+        page_count = int(response.text
+            .rpartition('<span class="page-numbers">')[2]
+            .partition('<')[0])
+        if page_count_values is not None:
+            page_count_values.append(page_count)
 
-                yield Badge(
-                    badge_id=self.badge_id, user_id=user_id, timestamp=timestamp)
+        without_leading_crap = response.text.partition(
+            '<div class="single-badge-table')[2]
+        also_without_trailing_crap = without_leading_crap.partition(
+            '<div class="pager')[0]
+        row_pieces = also_without_trailing_crap.split(
+            '<div class="single-badge-row-reason')[1:]
 
-            self.logger.debug("Scraped page %s/%s.", page_number, page_count)
+        for row_piece in row_pieces:
+            user_id = int((row_piece
+                .partition('<a href="/users/')[2]
+                .partition('/')[0]))
+            timestamp_raw = (row_piece
+                .partition('Awarded <span title="')[2]
+                .partition('"')[0])
+            timestamp = timestamp_from_iso1608(timestamp_raw)
+
+            yield Badge(
+                badge_id=self.badge_id, user_id=user_id, timestamp=timestamp)
 
     def grouped_by_timestamp(self, group_duration=7 * 24 * 60 * 60,
                              drop_groups_of_fewer_than=0):

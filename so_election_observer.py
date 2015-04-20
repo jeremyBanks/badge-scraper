@@ -10,10 +10,11 @@ logger = logging.getLogger(__name__)
 
 
 def main(*args):
-    flags = set(args)
     logging.basicConfig(level=logging.DEBUG)
 
     logger.warn("This data seems very questionable.")
+    
+    flags = set(args)
 
     so_sheriffs = scraping.BadgeData(
         host='stackoverflow.com', badge_id=3109, filename='sheriffs.csv')
