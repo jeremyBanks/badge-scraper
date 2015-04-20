@@ -185,7 +185,6 @@ class Badge(collections.abc.Hashable):
 
     def to_json(self):
         return {
-            'user_id': self.user_id,
             'html': self.html
         } 
 
