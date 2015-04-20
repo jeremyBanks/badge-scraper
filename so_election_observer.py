@@ -60,8 +60,11 @@ def get_badge_data_and_write_function(badge_id, filename):
 def main(*args):
     logging.basicConfig(
         level=logging.DEBUG,
-        format='\n' + ' ' *   2 + '[%(asctime)23s] %(pathname)s:%(lineno)d\n' +
-               ' ' *  14 + '%(levelname)10s in %(name)s\n' +
+        format='\n'
+               '  ' + '_' * 76 + '  \n'
+               '  | %(asctime)23s %(pathname)44s:%(lineno)-4s|  \n'
+               '__| %(levelname)-10s              %(name)48s |__\n'
+               '\n'
                '%(message)s')
 
     flags = set(args)
@@ -73,19 +76,23 @@ def main(*args):
     so_caucus, write_caucus = get_badge_data_and_write_function(
         badge_id=1973, filename='caucus')
 
-    so_sheriffs.update()
-    write_sherrifs()
+    if not flags.intersection(['-n', '--no-update']):
+        so_sheriffs.update()
+        write_sherrifs()
 
-    so_constituents.update(stop_on_existing=bool(
-        flags.intersection(['-x', '--stop-on-existing'])))
+        so_constituents.update(stop_on_existing=bool(
+            flags.intersection(['-x', '--stop-on-existing'])))
 
-    so_caucus.update(stop_on_existing=bool(
-        flags.intersection(['-x', '--stop-on-existing'])))
+        so_caucus.update(stop_on_existing=bool(
+            flags.intersection(['-x', '--stop-on-existing'])))
 
+    logger.info("Grouping constituents by election...")
     constituents_by_reason = so_constituents.by_reason()
-    caucus_by_reason = so_caucus.by_reason()
+    logger.info("...grouped constituents by election.")
 
-    logger.info("Badges grouped by election.")
+    logger.info("Grouping caucuses by election...")
+    caucus_by_reason = so_caucus.by_reason()
+    logger.info("...grouped caucuses by election.")
 
     assert len(constituents_by_reason) == len(caucus_by_reason)
 
@@ -130,25 +137,25 @@ def main(*args):
         title="Latest Election Activity by chunk",
         y_title="Users",
         x_title="Quarter-hours",
-        dots_size=1,
+        show_dots=False,
         range=(0, 512),
         width=1024,
         height=768,
-        fill=True,
         value_formatter=lambda n: str(int(n)),
         legend_at_bottom=True,
-        x_labels=[str(n) for n, _ in enumerate(caucus_by_chunk, start=1)],
-        interpolate='cubic',
-        style=pygal.style.RedBlueStyle
+        style=pygal.style.LightStyle
     )
     chart.add('constituents', constituents_by_chunk)
-    chart.add('caucus', caucus_by_chunk)
+    chart.add('caucus', [n_constituents
+                         for n_caucus, n_constituents
+                         in zip(caucus_by_chunk, constituents_by_chunk)])
 
     chart.render_to_file('data/latest-election.svg')
     logger.info("wrote data/latest-election.svg")
 
-    write_constituents()
-    write_caucus()
+    if not flags.intersection(['-n', '--no-update']):
+        write_constituents()
+        write_caucus()
 
 if __name__ == '__main__':
     sys.exit(main(*sys.argv[1:]))
