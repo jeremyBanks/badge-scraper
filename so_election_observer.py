@@ -47,7 +47,7 @@ def get_badge_data_and_write_function(badge_id, filename, require_file=False):
                     try:
                         f = open('data/' + filename + '.json', 'rt') 
                     except FileNotFoundError:
-                        if not require_file or True:
+                        if not require_file:
                             f = None
                         else:
                             raise
@@ -73,9 +73,8 @@ def get_badge_data_and_write_function(badge_id, filename, require_file=False):
 def main(*args):
     so_publicist, write_publicist = get_badge_data_and_write_function(
         badge_id=262, filename='publicist')
+    so_publicist.update()
     write_publicist()
-
-    return
 
     logging.basicConfig(
         level=logging.INFO,
