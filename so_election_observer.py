@@ -84,6 +84,8 @@ def main(*args):
 
     so_sheriffs, write_sherrifs = get_badge_data_and_write_function(
         badge_id=3109, filename='sherrif')
+    so_marshals, write_marshal = get_badge_data_and_write_function(
+        badge_id=1298, filename='marshal')
     so_constituents, write_constituents = get_badge_data_and_write_function(
         badge_id=1974, filename='constituent')
     so_caucus, write_caucus = get_badge_data_and_write_function(
@@ -108,6 +110,8 @@ def main(*args):
         so_copy_editor.update(stop_on_existing=bool(
             flags.intersection(['-x', '--stop-on-existing'])))
         so_publicist.update(stop_on_existing=bool(
+            flags.intersection(['-x', '--stop-on-existing'])))
+        so_marshals.update(stop_on_existing=bool(
             flags.intersection(['-x', '--stop-on-existing'])))
 
     logger.info("Grouping constituents by election.")
@@ -160,7 +164,6 @@ def main(*args):
         title="Latest Election Participation Per Hour",
         y_title="Users",
         show_dots=False,
-        # range=(0, 768),
         width=1024,
         height=768,
         value_formatter=lambda n: str(int(n)),
@@ -178,7 +181,6 @@ def main(*args):
         title="Latest Election Constituents Per Hour",
         y_title="Users",
         show_dots=False,
-        # range=(0, 768),
         width=1024,
         height=768,
         value_formatter=lambda n: str(int(n)),
@@ -213,6 +215,7 @@ def main(*args):
         write_steward()
         write_copy_editor()
         write_publicist()
+        write_marshal()
 
 if __name__ == '__main__':
     sys.exit(main(*sys.argv[1:]))

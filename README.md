@@ -1,14 +1,16 @@
 Scraping badge data from Stack Exchange and generating some graphs.
 
-[![Status on Travis CI](https://travis-ci.org/jeremybanks/badge-scraper.svg)](https://travis-ci.org/jeremybanks/badge-scraper.svg)
+[![Status on Travis CI](https://travis-ci.org/jeremybanks/badge-scraper.svg)](https://travis-ci.org/jeremybanks/badge-scraper)
 
 ## Graphs
+
+### Latest Election
+
+![](https://rawgit.com/jeremybanks/badge-scraper/master/data/latest-election-constituents.svg)
 
 ![](https://rawgit.com/jeremybanks/badge-scraper/master/data/latest-election.svg)
 
 ![](https://rawgit.com/jeremybanks/badge-scraper/master/data/latest-election-sums.svg)
-
-![](https://rawgit.com/jeremybanks/badge-scraper/master/data/latest-election-constituents.svg)
 
 ## Run
 
