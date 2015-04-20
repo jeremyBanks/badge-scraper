@@ -20,6 +20,13 @@ logger = logging.getLogger(__name__)
 LATEST_ELECTION_REASON = 'for an <a href="/election/6">election</a>'
 
 
+def sums(xs):
+    n = 0
+    for x in xs:
+        n += x
+        yield n
+
+
 def main(*args):
     def get_badge_data_and_write_function(badge_id, filename):
         os.makedirs('data', exist_ok=True)
@@ -50,7 +57,7 @@ def main(*args):
             badge_data = scraping.BadgeData(
                 host='stackoverflow.com', badge_id=badge_id)
 
-        logger.info("...loaded {} {} badges.".format(len(badge_data), filename))
+        logger.info("...{} loaded.".format(len(badge_data), filename))
 
         def write():
             logger.info("Writing {} {} badges...".format(len(badge_data), filename))
@@ -63,9 +70,9 @@ def main(*args):
     logging.basicConfig(
         level=logging.DEBUG,
         format='\n'
-               '  ' + '_' * 76 + '  \n'
-               '  | %(asctime)23s %(pathname)47s:%(lineno)-4s \n'
-               '__| %(levelname)-10s              %(name)51s \n'
+               '    ' + '_' * 76 + '\n'
+               '    | %(asctime)23s %(pathname)44s:%(lineno)-4s \n'
+               '____| %(levelname)-10s           %(name)51s \n'
                '\n'
                '%(message)s')
 
@@ -88,20 +95,18 @@ def main(*args):
         so_caucus.update(stop_on_existing=bool(
             flags.intersection(['-x', '--stop-on-existing'])))
 
-    logger.info("Grouping constituents by election...")
+    logger.info("Grouping constituents by election.")
     constituents_by_reason = so_constituents.by_reason()
-    logger.info("...grouped constituents by election.")
-
-    logger.info("Grouping caucuses by election...")
+    
+    logger.info("Grouping caucuses by election.")
     caucus_by_reason = so_caucus.by_reason()
-    logger.info("...grouped caucuses by election.")
-
+    
     assert len(constituents_by_reason) == len(caucus_by_reason)
 
     latest_constituents = constituents_by_reason[LATEST_ELECTION_REASON]
     latest_caucus = caucus_by_reason[LATEST_ELECTION_REASON]
 
-    chunk_duration = 15 * 60
+    chunk_duration = 60 * 60
 
     election_start_timestamp = min([
         latest_constituents[0].timestamp, latest_caucus[0].timestamp])
@@ -131,24 +136,40 @@ def main(*args):
                 (badge.timestamp - election_start_timestamp) /
                 chunk_duration))] += 1
 
-    logger.info("Generating graph.")
+    logger.info("Generating graph 1/2.")
 
-    chart = pygal.Line(
-        title="Latest Election Activity by chunk",
+    rate_chart = pygal.Line(
+        title="Latest Election Participation Per Hour",
         y_title="Users",
-        x_title="Quarter-hours",
         show_dots=False,
         range=(0, 512),
         width=1024,
         height=768,
         value_formatter=lambda n: str(int(n)),
-        legend_at_bottom=True
-    )
-    chart.add('constituents', constituents_by_chunk)
-    chart.add('caucus', caucus_by_chunk)
+        legend_at_bottom=True)
 
-    chart.render_to_file('data/latest-election.svg')
+    rate_chart.add('constituents', constituents_by_chunk)
+    rate_chart.add('caucus', caucus_by_chunk)
+
+    rate_chart.render_to_file('data/latest-election.svg')
     logger.info("wrote data/latest-election.svg")
+
+    logger.info("Generating graph 2/2.")
+
+    aggregate_chart = pygal.Line(
+        title="Latest Election Participation",
+        y_title="Users",
+        show_dots=False,
+        width=1024,
+        height=768,
+        value_formatter=lambda n: str(int(n)),
+        legend_at_bottom=True)
+
+    aggregate_chart.add('constituents', list(sums(constituents_by_chunk)))
+    aggregate_chart.add('caucus', list(sums(caucus_by_chunk)))
+
+    aggregate_chart.render_to_file('data/latest-election-sums.svg')
+    logger.info("wrote data/latest-election-sums.svg")
 
     if not flags.intersection(['-n', '--no-update']):
         write_constituents()
