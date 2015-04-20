@@ -93,6 +93,7 @@ class BadgeData(collections.abc.Iterable):
         """
 
         page_count_values = []
+        start_time = time.time()
 
         for page_number in itertools.count(1):
             # FIXME
@@ -105,11 +106,16 @@ class BadgeData(collections.abc.Iterable):
             yield from self._scrape_response(response, page_count_values)
 
             if page_number > page_count_values[-1]:
-                self.logger.info("Reached end of list.")
+                self.logger.info("Now past last page.")
                 return
 
+            eta = (
+                (page_count_values[-1] - page_number) *
+                ((time.time() - start_time) / page_number)) / 60
+
             self.logger.debug(
-                "Scraped page %s/%s", page_number, page_count_values[-1])
+                "Scraped page %s/%s (~%.1fm remaining)",
+                page_number, page_count_values[-1], eta)
 
     def _scrape_response(self, response, page_count_values=None):
         page_count_raw = (response.text
