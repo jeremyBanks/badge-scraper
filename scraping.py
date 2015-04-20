@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import calendar
 import collections.abc
+import csv
 import datetime
 import itertools
 import logging
@@ -181,7 +182,8 @@ class BadgeData(collections.abc.Iterable):
 
             self.logger.debug("Scraped page %s/%s.", page_number, page_count)
 
-    def grouped_by_timestamp(self, group_duration=7 * 24 * 60 * 60):
+    def grouped_by_timestamp(self, group_duration=7 * 24 * 60 * 60,
+                             drop_groups_of_fewer_than=0):
         groups = []
         latest_timestamp = -1
 
@@ -193,7 +195,10 @@ class BadgeData(collections.abc.Iterable):
 
             latest_timestamp = badge.timestamp
 
-        return groups
+        filtered_groups = [
+            g for g in groups if len(g) >= drop_groups_of_fewer_than]
+
+        return filtered_groups
 
 
 class Badge(collections.abc.Hashable):
@@ -217,62 +222,3 @@ class Badge(collections.abc.Hashable):
                 'user_id={0.user_id!r}, timestamp={0.timestamp!r})'
                 .format(self))
 
-
-def main(*args):
-    logger.warn("This data seems very questionable.")
-
-    flags = set(args)
-    logging.basicConfig(level=logging.DEBUG)
-
-    so_sheriffs = BadgeData(
-        host='stackoverflow.com', badge_id=3109, filename='sheriffs.csv')
-    so_constituents = BadgeData(
-        host='stackoverflow.com', badge_id=1974, filename='constituents.csv')
-    so_caucus = BadgeData(
-        host='stackoverflow.com', badge_id=1973, filename='caucus.csv')
-
-    for badge_data in [so_sheriffs, so_constituents , so_caucus]:
-        badge_data.update(stop_on_existing=bool(
-            flags.intersection(['-x', '--stop-on-existing'])))
-
-    print("Stack Overfow's Sheriffs ==", list(so_sheriffs))
-    print()
-    
-    constituents_by_election = so_constituents.grouped_by_timestamp()
-    caucus_by_election = so_caucus.grouped_by_timestamp()
-
-    print("Voters by election:")
-    for n, badges in enumerate(constituents_by_election, start=1):
-        print("  {}: {}".format(n, len(badges)))
-    print("Total:", len(so_constituents))
-    print()
-    print("Visited caucus by election:")
-    for n, badges in enumerate(caucus_by_election, start=1):
-        print("  {}: {}".format(n, len(badges)))
-    print("Total:", len(so_caucus))
-    print()
-    latest_election_constituents = constituents_by_election[-1]
-    latest_election_caucus = caucus_by_election[-1]
-
-    voting_start_timestamp = latest_election_caucus[0].timestamp
-
-    print("Saving latest-election-cumulative.csv")
-    with open('latest-election-cumulative.csv', 'wt') as f:
-        writer = csv.writer(f)
-        writer.writerow(('time offset', 'cumulative votes'))
-
-        for vote_count, badge in enumerate(latest_election_constituents, start=1):
-            vote_offset = badge.timestamp - voting_start_timestamp
-            writer.writerow((vote_offset, vote_count))
-
-    print("Saving latest-election-cumulative-caucus.csv")
-    with open('latest-election-cumulative-cacus.csv', 'wt') as f:
-        writer = csv.writer(f)
-        writer.writerow(('time offset', 'cumulative caucused'))
-
-        for caucus_count, badge in enumerate(latest_election_caucus, start=1):
-            caucus_offset = badge.timestamp - voting_start_timestamp
-            writer.writerow((caucus_offset, caucus_count))
-
-if __name__ == '__main__':
-    sys.exit(main(*sys.argv[1:]))
