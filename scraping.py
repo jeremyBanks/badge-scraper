@@ -79,9 +79,9 @@ class BadgeData(collections.abc.Iterable):
         for badge in self._scrape_all_badges():
             if badge not in self._instances:
                 self._instances.add(badge)
-                self.logger.info("Scraped badge: %r.", badge)
+                self.logger.debug("Scraped badge: %r.", badge)
             elif badge in previously_existing:
-                self.logger.info("Scraped already-known badge %r.", badge)
+                self.logger.debug("Scraped already-known badge %r.", badge)
                 return
             # else it's probably slight page overlap from data changing
 
@@ -113,7 +113,7 @@ class BadgeData(collections.abc.Iterable):
                 (page_count_values[-1] - page_number) *
                 ((time.time() - start_time) / page_number)) / 60
 
-            self.logger.debug(
+            self.logger.info(
                 "Scraped page %s/%s (~%.1fm remaining)",
                 page_number, page_count_values[-1], eta)
 

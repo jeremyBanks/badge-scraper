@@ -1,6 +1,14 @@
-Crudely scraping badge data from Stack Exchange, and maybe generating some graphs.
+Scraping badge data from Stack Exchange and generating some graphs.
 
 [![Status on Travis CI](https://travis-ci.org/jeremybanks/badge-scraper.svg)](https://travis-ci.org/jeremybanks/badge-scraper.svg)
+
+## Graphs
+
+![](./data/latest-election.svg)
+
+![](./data/latest-election-sums.svg)
+
+![](./data/latest-election-constituents.svg)
 
 ## Run
 
@@ -9,10 +17,6 @@ It's a bit slow.
     pip3 install -r requirements.txt &&
     python3 -m pytest &&
     ./so_election_observer.py -x
-
-![](https://raw.githubusercontent.com/jeremybanks/badge-scraper/master/data/latest-election.svg)
-
-![](https://raw.githubusercontent.com/jeremybanks/badge-scraper/master/data/latest-election-sums.svg)
 
 ## Flags
 

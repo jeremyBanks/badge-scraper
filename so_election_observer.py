@@ -27,48 +27,58 @@ def sums(xs):
         yield n
 
 
-def main(*args):
-    def get_badge_data_and_write_function(badge_id, filename):
-        os.makedirs('data', exist_ok=True)
+def get_badge_data_and_write_function(badge_id, filename, require_file=False):
+    os.makedirs('data', exist_ok=True)
 
-        logger.info("Loading {} badges...".format(filename))
+    logger.info("Loading {} badges...".format(filename))
 
+    try:
+        f = lzma.open('data/' + filename + '.json.xz', 'rt') 
+    except FileNotFoundError:
         try:
-            f = lzma.open('data/' + filename + '.json.xz', 'rt') 
+            f = lzma.open('data/' + filename + '.json.lzma', 'rt') 
         except FileNotFoundError:
             try:
-                f = lzma.open('data/' + filename + '.json.lzma', 'rt') 
+                f = bz2.open('data/' + filename + '.json.bz2', 'rt') 
             except FileNotFoundError:
                 try:
-                    f = bz2.open('data/' + filename + '.json.bz2', 'rt') 
+                    f = gzip.open('data/' + filename + '.json.gz', 'rt') 
                 except FileNotFoundError:
                     try:
-                        f = gzip.open('data/' + filename + '.json.gz', 'rt') 
+                        f = open('data/' + filename + '.json', 'rt') 
                     except FileNotFoundError:
-                        try:
-                            f = open('data/' + filename + '.json', 'rt') 
-                        except FileNotFoundError:
+                        if not require_file or True:
                             f = None
+                        else:
+                            raise
 
-        if f:
-            with f:
-                badge_data = scraping.BadgeData.from_json(json.load(f))
-        else:
-            badge_data = scraping.BadgeData(
-                host='stackoverflow.com', badge_id=badge_id)
+    if f:
+        with f:
+            badge_data = scraping.BadgeData.from_json(json.load(f))
+    else:
+        badge_data = scraping.BadgeData(
+            host='stackoverflow.com', badge_id=badge_id)
 
-        logger.info("...{} loaded.".format(len(badge_data), filename))
+    logger.info("...{} loaded.".format(len(badge_data), filename))
 
-        def write():
-            logger.info("Writing {} {} badges...".format(len(badge_data), filename))
-            with lzma.open('data/' + filename + '.json.xz', 'wt') as f:
-                json.dump(badge_data.to_json(), f)
-            logger.info("...wrote {} {} badges.".format(len(badge_data), filename))
+    def write():
+        logger.info("Writing {} {} badges...".format(len(badge_data), filename))
+        with lzma.open('data/' + filename + '.json.xz', 'wt') as f:
+            json.dump(badge_data.to_json(), f)
+        logger.info("...wrote {} {} badges.".format(len(badge_data), filename))
 
-        return badge_data, write
+    return badge_data, write
+
+
+def main(*args):
+    so_publicist, write_publicist = get_badge_data_and_write_function(
+        badge_id=262, filename='publicist')
+    write_publicist()
+
+    return
 
     logging.basicConfig(
-        level=logging.DEBUG,
+        level=logging.INFO,
         format='\n'
                '    ' + '_' * 76 + '\n'
                '    | %(asctime)23s %(pathname)44s:%(lineno)-4s \n'
@@ -84,6 +94,12 @@ def main(*args):
         badge_id=1974, filename='constituent')
     so_caucus, write_caucus = get_badge_data_and_write_function(
         badge_id=1973, filename='caucus')
+    so_steward, write_steward = get_badge_data_and_write_function(
+        badge_id=2279, filename='steward')
+    so_copy_editor, write_copy_editor = get_badge_data_and_write_function(
+        badge_id=223, filename='copy_editor')
+    so_publicist, write_publicist = get_badge_data_and_write_function(
+        badge_id=262, filename='publicist')
 
     if not flags.intersection(['-n', '--no-update']):
         so_sheriffs.update()
@@ -91,8 +107,13 @@ def main(*args):
 
         so_constituents.update(stop_on_existing=bool(
             flags.intersection(['-x', '--stop-on-existing'])))
-
         so_caucus.update(stop_on_existing=bool(
+            flags.intersection(['-x', '--stop-on-existing'])))
+        so_steward.update(stop_on_existing=bool(
+            flags.intersection(['-x', '--stop-on-existing'])))
+        so_copy_editor.update(stop_on_existing=bool(
+            flags.intersection(['-x', '--stop-on-existing'])))
+        so_publicist.update(stop_on_existing=bool(
             flags.intersection(['-x', '--stop-on-existing'])))
 
     logger.info("Grouping constituents by election.")
@@ -120,11 +141,14 @@ def main(*args):
 
     constituents_by_chunk = [0 for _ in range(election_chunks)]
 
+    first_constituent_index = len(election_chunks)
     for badge in latest_constituents:
-        constituents_by_chunk[
-            int(math.floor(
-                (badge.timestamp - election_start_timestamp) /
-                chunk_duration))] += 1
+        index = int(math.floor(
+            (badge.timestamp - election_start_timestamp) /
+            chunk_duration))
+        if index < first_constituent_index:
+            first_constituent_index = index
+        constituents_by_chunk[index] += 1
 
     logger.info("Grouping caucus badges into chunks.")
 
@@ -136,7 +160,7 @@ def main(*args):
                 (badge.timestamp - election_start_timestamp) /
                 chunk_duration))] += 1
 
-    logger.info("Generating graph 1/2.")
+    logger.info("Generating data/latest-election.svg.")
 
     rate_chart = pygal.Line(
         title="Latest Election Participation Per Hour",
@@ -154,7 +178,25 @@ def main(*args):
     rate_chart.render_to_file('data/latest-election.svg')
     logger.info("wrote data/latest-election.svg")
 
-    logger.info("Generating graph 2/2.")
+    logger.info("Generating data/latest-election-constituents.svg.")
+
+    rate_chart = pygal.Line(
+        title="Latest Election Constituents Per Hour",
+        y_title="Users",
+        show_dots=False,
+        range=(0, 512),
+        width=1024,
+        height=768,
+        value_formatter=lambda n: str(int(n)),
+        legend_at_bottom=True)
+
+    rate_chart.add(
+        'constituents', constituents_by_chunk[first_constituent_index:])
+
+    rate_chart.render_to_file('data/latest-election-constituents.svg')
+    logger.info("wrote data/latest-election-constituents.svg")
+
+    logger.info("Generating data/latest-election-sums.svg.")
 
     aggregate_chart = pygal.Line(
         title="Latest Election Participation",
@@ -169,11 +211,14 @@ def main(*args):
     aggregate_chart.add('caucus', list(sums(caucus_by_chunk)))
 
     aggregate_chart.render_to_file('data/latest-election-sums.svg')
-    logger.info("wrote data/latest-election-sums.svg")
+    logger.info("Wrote data/latest-election-sums.svg")
 
     if not flags.intersection(['-n', '--no-update']):
         write_constituents()
         write_caucus()
+        write_steward()
+        write_copy_editor()
+        write_publicist()
 
 if __name__ == '__main__':
     sys.exit(main(*sys.argv[1:]))
