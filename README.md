@@ -10,9 +10,9 @@ It's a bit slow.
     python3 -m pytest &&
     ./so_election_observer.py -x
 
-![](https://raw.githubusercontent.com/jeremybanks/badge-scraper/master/data/latest-election.svg)
+![](https://rawgit.com/jeremybanks/badge-scraper/master/data/latest-election.svg)
 
-![](https://raw.githubusercontent.com/jeremybanks/badge-scraper/master/data/latest-election-sums.svg)
+![](https://rawgit.com/jeremybanks/badge-scraper/master/data/latest-election-sums.svg)
 
 ## Flags
 
