@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 import csv
+import json
 import logging
+import os
 import sys
+
+import pygal
 
 import scraping
 
@@ -9,25 +13,54 @@ import scraping
 logger = logging.getLogger(__name__)
 
 
+def get_badge_data_and_writer(badge_id, filename):
+    os.makedirs('data', exist_ok=True)
+
+    try:
+        f = open('data/' + filename + '.json', 'rt') 
+    except IOError:
+        f = None
+
+    if f:
+        with f:
+            badge_data = scraping.BadgeData.from_json(json.load(f))
+    else:
+        badge_data = scraping.BadgeData(
+            host='stackoverflow.com', badge_id=badge_id)
+
+    def write():
+        with open('data/' + filename + '.json', 'wt') as f:
+            json.dump(badge_data.to_json(), f, indent=2)
+
+    return badge_data, write
+
+
 def main(*args):
     logging.basicConfig(level=logging.DEBUG)
 
     logger.warn("This data seems very questionable.")
-    
+
     flags = set(args)
 
-    so_sheriffs = scraping.BadgeData(
-        host='stackoverflow.com', badge_id=3109, filename='sheriffs.csv')
-    so_constituents = scraping.BadgeData(
-        host='stackoverflow.com', badge_id=1974, filename='constituents.csv')
-    so_caucus = scraping.BadgeData(
-        host='stackoverflow.com', badge_id=1973, filename='caucus.csv')
+    so_sheriffs, write_sherrifs = get_badge_data_and_writer(
+        badge_id=3109, filename='sherrif')
+    so_constituents, write_constituents = get_badge_data_and_writer(
+        badge_id=1974, filename='constituents')
+    so_caucus, write_caucus = get_badge_data_and_writer(
+        badge_id=1974, filename='caucus')
+
+    so_sheriffs.update()
+    write_sherrifs()
+
+    so_constituents.update(stop_on_existing=bool(
+        flags.intersection(['-x', '--stop-on-existing'])))
+    write_constituents()
+
+    so_caucus.update(stop_on_existing=bool(
+        flags.intersection(['-x', '--stop-on-existing'])))
+    write_caucus()
 
     noise_limit = 128
-
-    for badge_data in [so_constituents , so_caucus]:
-        badge_data.update(stop_on_existing=bool(
-            flags.intersection(['-x', '--stop-on-existing'])))
 
     print("Stack Overfow's Sheriffs ==", list(so_sheriffs))
     print()
@@ -56,7 +89,7 @@ def main(*args):
     voting_start_timestamp = latest_election_caucus[0].timestamp
 
     print("Saving latest-election-cumulative.csv")
-    with open('latest-election-cumulative.csv', 'wt') as f:
+    with open('data/latest-election-cumulative.csv', 'wt') as f:
         writer = csv.writer(f)
         writer.writerow(('time offset', 'cumulative votes'))
 
@@ -65,7 +98,7 @@ def main(*args):
             writer.writerow((vote_offset, vote_count))
 
     print("Saving latest-election-cumulative-caucus.csv")
-    with open('latest-election-cumulative-cacus.csv', 'wt') as f:
+    with open('data/latest-election-cumulative-cacus.csv', 'wt') as f:
         writer = csv.writer(f)
         writer.writerow(('time offset', 'cumulative caucused'))
 

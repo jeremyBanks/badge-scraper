@@ -30,13 +30,26 @@ class BadgeData(collections.abc.Iterable):
     REQUEST_INTERVAL_SECONDS = .5
     logger = logging.getLogger(__name__).getChild('BadgeData')
 
-    def __init__(self, host, badge_id, filename):
+    def __init__(self, host, badge_id, instances=()):
         self.host = host
         self.badge_id = badge_id
-        self.filename = filename
+        self._instances = set(instances)
 
-        self._instances = set()
-        self.load()
+    def to_json(self):
+        return {
+            'host': self.host,
+            'badge_id': self.badge_id,
+            'instances': [ instance.to_json() for instance in self ]
+        }
+
+    @classmethod
+    def from_json(cls, data):
+        return cls(
+            host=data['host'],
+            badge_id=data['badge_id'],
+            instances=[
+                Badge.from_json(instance_data, badge_id=data['badge_id'])
+                for instance_data in data['instances']])
 
     def __repr__(self):
         return (
@@ -48,58 +61,6 @@ class BadgeData(collections.abc.Iterable):
 
     def __len__(self):
         return len(self._instances)
-
-    def load(self):
-        """Loads any existing data from the associated CSV file."""
-        try:
-            f = open(self.filename, 'rt+', newline='')
-        except IOError as ex:
-            f = None
-
-        if f is not None:
-            with f:
-                reader = csv.reader(f)
-                try:
-                    header_row = tuple(next(reader))
-                except StopIteration:
-                    self.logger.warn(
-                        "Existing badge data file exists but is empty. "
-                        "Adding header row.")
-                    f.seek(0)
-                    writer = csv.writer(f)
-                    writer.writerow(self.FIELD_NAMES)
-
-                    return
-
-                if header_row != self.FIELD_NAMES:
-                    raise ValueError(
-                        "Expected field names {!r}, found {!r}.".format(
-                            self.FIELD_NAMES, header_row))
-
-                for row in reader:
-                    user_id, timestamp_raw = row
-
-                    try:
-                        timestamp = int(timestamp_raw)
-                    except ValueError:
-                        timestamp = timestamp_from_iso1608(timestamp_raw)
-
-                    self._instances.add(Badge(
-                        badge_id=self.badge_id,
-                        user_id=int(user_id),
-                        timestamp=timestamp))
-
-            self.logger.info(
-                "Read %s instances from data file for %s.",
-                len(self._instances), self)
-        else:
-            self.logger.info(
-                "There is no existing badge data file. "
-                "Creating one with header.")
-
-            with open(self.filename, 'wt') as f:
-                writer = csv.writer(f)
-                writer.writerow(self.FIELD_NAMES)
 
     def update(self, stop_on_existing=False):
         """Scrape the site, saving all new badge instances to the data file.
@@ -113,31 +74,17 @@ class BadgeData(collections.abc.Iterable):
         if an update() has been interrupted.
         """
 
-        try:
-            f = open(self.filename, 'at', newline='')
-            new_file = False
-        except IOError as ex:
-            f = open(self.filename, 'wt', newline='')
-            new_file = True
+        for badge in self._scrape_all_badges():
+            if badge not in self._instances:
+                self._instances.add(badge)
+                self.logger.info("Scraped badge: %r.", badge)
+            else:
+                self.logger.info("Scraped already-known badge %r.", badge)
 
-        with f:
-            writer = csv.writer(f)
+                if stop_on_existing:
+                    return
 
-            if new_file:
-                writer.writerow(self.FIELD_NAMES)
-
-            for badge in self._scrape_all_badges():
-                if badge not in self._instances:
-                    writer.writerow((badge.user_id, badge.timestamp))
-                    self._instances.add(badge)
-                    self.logger.info("Scraped badge: %r.", badge)
-                else:
-                    self.logger.info("Scraped already-known badge %r.", badge)
-
-                    if stop_on_existing:
-                        return
-
-            self.logger.info("Reached end of badge list. Update complete.")
+        self.logger.info("Reached end of badge list. Update complete.")
 
     def _scrape_all_badges(self):
         """Yields instances of all badges on the site, scraping them
@@ -147,23 +94,27 @@ class BadgeData(collections.abc.Iterable):
         page_count_values = []
 
         for page_number in itertools.count(1):
+            # FIXME
             time.sleep(self.REQUEST_INTERVAL_SECONDS)
 
             url = 'http://{}/help/badges/{}?page={}'.format(
                 self.host, self.badge_id, page_number)
 
             response = requests.get(url)
-            yield from self._scrape_page(response, page_count_values)
+            yield from self._scrape_response(response, page_count_values)
 
             if page_number > page_count_values[-1]:
-                self.logger.info("Reached end of list; page does not exist.")
+                self.logger.info("Reached end of list.")
+                return
 
-            self.logger.debug("Scraped page %s/%s", page_number, page_count)
+            self.logger.debug(
+                "Scraped page %s/%s", page_number, page_count_values[-1])
 
     def _scrape_response(self, response, page_count_values=None):
-        page_count = int(response.text
+        page_count_raw = (response.text
             .rpartition('<span class="page-numbers">')[2]
             .partition('<')[0])
+        page_count = int(page_count_raw) if page_count_raw else 1
         if page_count_values is not None:
             page_count_values.append(page_count)
 
@@ -172,19 +123,10 @@ class BadgeData(collections.abc.Iterable):
         also_without_trailing_crap = without_leading_crap.partition(
             '<div class="pager')[0]
         row_pieces = also_without_trailing_crap.split(
-            '<div class="single-badge-row-reason')[1:]
+            '<div class="single-badge-row-')[1:]
 
         for row_piece in row_pieces:
-            user_id = int((row_piece
-                .partition('<a href="/users/')[2]
-                .partition('/')[0]))
-            timestamp_raw = (row_piece
-                .partition('Awarded <span title="')[2]
-                .partition('"')[0])
-            timestamp = timestamp_from_iso1608(timestamp_raw)
-
-            yield Badge(
-                badge_id=self.badge_id, user_id=user_id, timestamp=timestamp)
+            yield Badge(badge_id=self.badge_id, html=row_piece)
 
     def grouped_by_timestamp(self, group_duration=7 * 24 * 60 * 60,
                              drop_groups_of_fewer_than=0):
@@ -208,10 +150,54 @@ class BadgeData(collections.abc.Iterable):
 class Badge(collections.abc.Hashable):
     """An awarded instance of a particular badge."""
 
-    def __init__(self, badge_id, user_id, timestamp):
+    def __init__(self, badge_id, html):
         self.badge_id = badge_id
-        self.user_id = user_id
-        self.timestamp = timestamp
+        self.html = html
+
+    @property
+    def user_id(self):
+        return int((self.html
+            .partition('<a href="/users/')[2]
+            .partition('/')[0]))
+
+    @property
+    def stack_time(self):
+        return (self.html
+            .partition('Awarded <span title="')[2]
+            .partition('"')[0])
+
+    @property
+    def timestamp(self):
+        return timestamp_from_iso1608(self.stack_time)
+
+    @property
+    def for_what(self):
+        reason_part = (self.html
+            .partition('<div class="single-badge-reason">')[2]
+            .partition('</div>')[0])
+
+        return reason_part.strip() or None
+
+    @classmethod
+    def from_json(cls, data, badge_id):
+        self = Badge(
+            badge_id=badge_id,
+            html=data['html'])
+
+        assert self.for_what == data['for_what']
+        assert self.timestamp == data['timestamp']
+        assert self.stack_time == data['stack_time']
+
+        return self
+
+    def to_json(self):
+        return {
+            'user_id': self.user_id,
+            'html': self.html,
+            'for_what': self.for_what,
+            'stack_time': self.stack_time,
+            'timestamp': self.timestamp
+        } 
 
     def __eq__(self, other):
         return (self.badge_id == other.badge_id and
