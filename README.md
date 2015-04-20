@@ -4,11 +4,11 @@ Scraping badge data from Stack Exchange and generating some graphs.
 
 ## Graphs
 
-![](./data/latest-election.svg)
+![](https://rawgit.com/jeremybanks/badge-scraper/master/data/latest-election.svg)
 
-![](./data/latest-election-sums.svg)
+![](https://rawgit.com/jeremybanks/badge-scraper/master/data/latest-election-sums.svg)
 
-![](./data/latest-election-constituents.svg)
+![](https://rawgit.com/jeremybanks/badge-scraper/master/data/latest-election-constituents.svg)
 
 ## Run
 
