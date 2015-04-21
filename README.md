@@ -4,13 +4,12 @@ Scraping badge data from Stack Exchange and generating some graphs.
 
 ## Graphs
 
-### Latest Election
+### Election Activity
 
-![](https://rawgit.com/jeremybanks/badge-scraper/master/data/latest-election-constituents.svg)
-
-![](https://rawgit.com/jeremybanks/badge-scraper/master/data/latest-election.svg)
-
-![](https://rawgit.com/jeremybanks/badge-scraper/master/data/latest-election-sums.svg)
+![](./images/election-6-both-per-hour.svg)  
+![](./images/election-5-both-per-hour.svg)  
+![](./images/election-4-both-per-hour.svg)  
+![](./images/election-3-both-per-hour.svg)  
 
 ## Run
 
