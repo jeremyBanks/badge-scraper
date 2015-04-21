@@ -186,13 +186,6 @@ def main(*args):
 
             election.hello_graphs()
 
-        if not flags.intersection(['-n', '--no-update', '-m', '--no-write']):
-            write_constituents()
-            write_caucus()
-
-        if not flags.intersection(['-e', '--forever']):
-            break
-
         filename = 'images/election-5-6-both-cumulative.svg'
         logger.info("Generating {}.".format(filename))
 
@@ -217,6 +210,13 @@ def main(*args):
 
         chart.render_to_file(filename)
         logger.info("Wrote {}.".format(filename))
+
+        if not flags.intersection(['-n', '--no-update', '-m', '--no-write']):
+            write_constituents()
+            write_caucus()
+
+        if not flags.intersection(['-e', '--forever']):
+            break
 
         logger.info("Sleeping for a while")
         time.sleep(60 * 5)
