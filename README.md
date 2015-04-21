@@ -14,7 +14,7 @@ Scraping badge data from Stack Exchange and generating some graphs.
 
 ## Run
 
-It's a bit slow.
+It's a slow.
 
     pip3 install -r requirements.txt &&
     python3 -m pytest &&
