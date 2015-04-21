@@ -37,9 +37,11 @@ class ElectionData(object):
 
         self.start_timestamp = self.caucus_badges[0].timestamp
         self.election_timestamp = self.constituent_badges[0].timestamp
-        self.end_timestamp = max([
-            self.caucus_badges[-1].timestamp,
-            self.constituent_badges[0].timestamp])
+
+        # We can't just look at the data, because there are some
+        # badges awarded later than makes sense. Hope this doesn't
+        # change.
+        self.end_timestamp = self.start_timestamp + 14 * 24 * 60 * 60
 
     def hello_graphs(self):
         logger.info(
@@ -59,15 +61,21 @@ class ElectionData(object):
                 hour_duration))
             if index < first_constituent_index:
                 first_constituent_index = index
-            constituents_by_hour[index] += 1
+            try:
+                constituents_by_hour[index] += 1
+            except IndexError:
+                logger.debug("ignoring weird {!r}".format(badge))
 
         logger.info("Grouping caucus badges into hours.")
         caucus_by_hour = [0 for _ in range(election_hours)]
         for badge in self.caucus_badges:
-            caucus_by_hour[
-                int(math.floor(
-                    (badge.timestamp - self.start_timestamp) /
-                    hour_duration))] += 1
+            try:
+                caucus_by_hour[
+                    int(math.floor(
+                        (badge.timestamp - self.start_timestamp) /
+                        hour_duration))] += 1
+            except IndexError:
+                logger.debug("ignoring weird {!r}".format(badge))
 
         filename = 'images/election-{}-both-per-hour.svg'.format(self.id)
         logger.info("Generating {}.".format(filename))
@@ -78,6 +86,7 @@ class ElectionData(object):
             show_dots=False,
             width=1024,
             height=768,
+            range=(0, 1000),
             value_formatter=lambda n: str(int(n)),
             legend_at_bottom=True)
 
@@ -96,6 +105,7 @@ class ElectionData(object):
             show_dots=False,
             width=1024,
             height=768,
+            range=(0, 1000),
             value_formatter=lambda n: str(int(n)),
             legend_at_bottom=True)
 
