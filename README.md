@@ -7,14 +7,15 @@ Scraping badge data from Stack Exchange and generating some graphs.
 ### Election Activity
 
 ![](https://rawgit.com/jeremybanks/badge-scraper/master/images/election-5-6-both-cumulative.svg)  
-![](https://rawgit.com/jeremybanks/badge-scraper/master/images/election-6-both-per-hour.svg)  
-![](https://rawgit.com/jeremybanks/badge-scraper/master/images/election-5-both-per-hour.svg)  
+![](https://rawgit.com/jeremybanks/badge-scraper/master/images/election-stackoverflow.com-6-both-per-hour.svg)  
+![](https://rawgit.com/jeremybanks/badge-scraper/master/images/election-stackoverflow.com-5-both-per-hour.svg)  
+![](https://rawgit.com/jeremybanks/badge-scraper/master/images/math-comparison-both-cumulative.svg)
 
 ## Run
 
     pip3 install -r requirements.txt &&
     python3 -m pytest &&
-    ./so_election_observer.py
+    ./election_observer.py
 
 Writing updated data back to disk is very slow.
 
