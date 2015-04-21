@@ -14,14 +14,20 @@ Scraping badge data from Stack Exchange and generating some graphs.
 
 ## Run
 
-It's a slow.
-
     pip3 install -r requirements.txt &&
     python3 -m pytest &&
-    ./so_election_observer.py -x
+    ./so_election_observer.py
+
+Writing updated data back to disk is very slow.
 
 ## Flags
 
-`-x`, `--stop-on-existing`: Stop scraping for new instances of a badges once an already-known instance has been encountered.
+`-n`, `--no-update`: Don't fetch any new/updated data, just use what you already have.
 
-`-n`, `--no-update`: Don't scrape any new data, just use what you already have.
+`-m`, `--no-write`: Don't write any new/updated data.
+
+`-e`, `--forever`: Repeat forever, with some delay.
+
+## Needed Improvements
+
+- We shouldn't remove the existing data files until we finish writing the updated ones. Interrupting a write can currently cause corruption.

@@ -137,64 +137,113 @@ class BadgeData(collections.abc.Iterable):
 
     def by_reason(self):
         by_reason = {}
-
         for badge in self:
-            by_reason.setdefault(badge.for_what, []).append(badge)
-
+            by_reason.setdefault(badge.reason_html, []).append(badge)
         return by_reason
-
 
 class Badge(collections.abc.Hashable):
     """An awarded instance of a particular badge."""
 
-    def __init__(self, badge_id, html):
+    def __init__(self, badge_id, html=None):
         self.badge_id = badge_id
-        self.html = html
 
-    @property
-    def user_id(self):
-        return int((self.html
-            .partition('<a href="/users/')[2]
-            .partition('/')[0]))
-
-    @property
-    def stack_time(self):
-        return (self.html
-            .partition('Awarded <span title="')[2]
-            .partition('"')[0])
-
-    @property
-    def timestamp(self):
-        return timestamp_from_iso1608(self.stack_time)
-
-    @property
-    def for_what(self):
-        reason_part = (self.html
-            .partition('<div class="single-badge-reason">')[2]
-            .partition('</div>')[0])
-
-        return reason_part.strip() or None
+        if html is not None:
+            self.reason_html = (
+                html
+                .partition('<div class="single-badge-reason">')[2]
+                .partition('</div>')[0]).strip() or None
+            self.user_id = int(
+                html
+                .partition('<a href="/users/')[2]
+                .partition('/')[0])
+            self.stack_time = (
+                html
+                .partition('Awarded <span title="')[2]
+                .partition('"')[0]) or None
+            self.timestamp = timestamp_from_iso1608(self.stack_time)
+            self.username_html = (
+                html
+                .partition('<a href="/users/')[2]
+                .partition('>')[2]
+                .partition('<')[0]) or None
+            rep_piece = (
+                html
+                .partition('<span class="reputation-score"')[2]
+                .partition('<')[0])
+            rep_text = rep_piece.partition('>')[2]
+            if 'k' not in rep_text:
+                self.rep = int(rep_text.replace(',', ''))
+            else:
+                self.rep = int(
+                    rep_piece
+                    .partition('reputation score ')[2]
+                    .partition('"')[0]
+                    .replace(',', ''))
+            self.gold = int(
+                ' gold badge' in html and
+                html
+                .rpartition(' gold badge')[0]
+                .rpartition('<span title="')[2]
+                .replace(',', '')
+                or 0)
+            self.silver = int(
+                ' silver badge' in html and
+                html
+                .rpartition(' silver badge')[0]
+                .rpartition('<span title="')[2]
+                .replace(',', '')
+                or 0)
+            self.bronze = int(
+                ' bronze badge' in html and
+                html
+                .rpartition(' bronze badge')[0]
+                .rpartition('<span title="')[2]
+                .replace(',', '')
+                or 0)
 
     @classmethod
     def from_json(cls, data, badge_id):
-        self = Badge(
-            badge_id=badge_id,
-            html=data['html'])
+        self = Badge(badge_id=badge_id, html=data.get('html'))
+        if 'html' not in data:
+            self.reason_html = data['reason_html']
+            self.user_id = data['user_id']
+            self.username_html = data['username_html']
+            self.stack_time = data['stack_time']
+            self.timestamp = data['timestamp']
+            self.rep = data['rep']
+            self.gold = data['gold']
+            self.silver = data['silver']
+            self.bronze = data['bronze']
 
         return self
 
-    def to_json(self):
-        return {
-            'html': self.html
-        } 
+    def to_json(self, html=True):
+        if hasattr(self, 'html') and self.html is not None:
+            return {
+                'html': self.html
+            }
+        else:
+            return {
+                'reason_html': self.reason_html,
+                'user_id': self.user_id,
+                'stack_time': self.stack_time,
+                'timestamp': self.timestamp,
+                'username_html': self.username_html,
+                'rep': self.rep,
+                'gold': self.gold,
+                'silver': self.silver,
+                'bronze': self.bronze,
+            }
 
     def __eq__(self, other):
         return (self.badge_id == other.badge_id and
                 self.user_id == other.user_id and
-                self.timestamp == other.timestamp)
+                self.timestamp == other.timestamp and
+                self.reason_html == other.reason_html)
 
     def __hash__(self):
-        return hash((self.badge_id, self.user_id, self.timestamp))
+        return hash((
+            self.badge_id, self.user_id, self.timestamp, self.reason_html))
 
     def __repr__(self):
         return ('{0.__class__.__name__}(badge_id={0.badge_id!r}, '
