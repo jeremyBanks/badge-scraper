@@ -8,8 +8,8 @@ Scraping badge data from Stack Exchange and generating some graphs.
 
 ![](https://rawgit.com/jeremybanks/badge-scraper/master/images/election-6-both-per-hour.svg)  
 ![](https://rawgit.com/jeremybanks/badge-scraper/master/images/election-5-both-per-hour.svg)  
-![](https://rawgit.com/jeremybanks/badge-scraper/master/images/election-4-both-per-hour.svg)  
-![](https://rawgit.com/jeremybanks/badge-scraper/master/images/election-3-both-per-hour.svg)  
+![](https://rawgit.com/jeremybanks/badge-scraper/master/images/election-6-both-per-cummulative.svg)  
+![](https://rawgit.com/jeremybanks/badge-scraper/master/images/election-5-both-per-cummulative.svg)  
 
 ## Run
 
