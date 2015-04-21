@@ -37,21 +37,12 @@ def get_badge_data_and_write_function(badge_id, filename, require_file=False):
         f = lzma.open('data/' + filename + '.json.xz', 'rt') 
     except FileNotFoundError:
         try:
-            f = lzma.open('data/' + filename + '.json.lzma', 'rt') 
+            f = open('data/' + filename + '.json', 'rt') 
         except FileNotFoundError:
-            try:
-                f = bz2.open('data/' + filename + '.json.bz2', 'rt') 
-            except FileNotFoundError:
-                try:
-                    f = gzip.open('data/' + filename + '.json.gz', 'rt') 
-                except FileNotFoundError:
-                    try:
-                        f = open('data/' + filename + '.json', 'rt') 
-                    except FileNotFoundError:
-                        if not require_file:
-                            f = None
-                        else:
-                            raise
+            if not require_file:
+                f = None
+            else:
+                raise
 
     if f:
         with f:
