@@ -41,42 +41,43 @@ class ElectionData(object):
         # We can't just look at the data, because there are some
         # badges awarded later than makes sense. Hope this doesn't
         # change.
-        self.end_timestamp = self.start_timestamp + 14 * 24 * 60 * 60
+        self.end_timestamp = self.start_timestamp + 15 * 24 * 60 * 60
 
-    def hello_graphs(self):
+        self._prepare_data()
+
+    def _prepare_data(self):
         logger.info(
             "Generating graphs for election {}.".format(self.id))
 
-        hour_duration = 60 * 60
-        election_hours = int(
+        self.hour_duration = 60 * 60
+        self.election_hours = int(
             1 + math.floor(self.end_timestamp - self.start_timestamp) /
-            hour_duration)
+            self.hour_duration)
 
-        logger.info("Grouping constituent badges into hours.")
-        constituents_by_hour = [0 for _ in range(election_hours)]
-        first_constituent_index = len(constituents_by_hour)
+        self.constituents_by_hour = [0 for _ in range(self.election_hours)]
+        self.first_constituent_index = len(self.constituents_by_hour)
         for badge in self.constituent_badges:
             index = int(math.floor(
                 (badge.timestamp - self.start_timestamp) /
-                hour_duration))
-            if index < first_constituent_index:
-                first_constituent_index = index
+                self.hour_duration))
+            if index < self.first_constituent_index:
+                self.first_constituent_index = index
             try:
-                constituents_by_hour[index] += 1
+                self.constituents_by_hour[index] += 1
             except IndexError:
                 logger.debug("ignoring weird {!r}".format(badge))
 
-        logger.info("Grouping caucus badges into hours.")
-        caucus_by_hour = [0 for _ in range(election_hours)]
+        self.caucus_by_hour = [0 for _ in range(self.election_hours)]
         for badge in self.caucus_badges:
             try:
-                caucus_by_hour[
+                self.caucus_by_hour[
                     int(math.floor(
                         (badge.timestamp - self.start_timestamp) /
-                        hour_duration))] += 1
+                        self.hour_duration))] += 1
             except IndexError:
                 logger.debug("ignoring weird {!r}".format(badge))
 
+    def hello_graphs(self):
         filename = 'images/election-{}-both-per-hour.svg'.format(self.id)
         logger.info("Generating {}.".format(filename))
 
@@ -90,8 +91,8 @@ class ElectionData(object):
             value_formatter=lambda n: str(int(n)),
             legend_at_bottom=True)
 
-        chart.add('constituents', constituents_by_hour)
-        chart.add('caucus', caucus_by_hour)
+        chart.add('constituents', self.constituents_by_hour)
+        chart.add('caucus', self.caucus_by_hour)
 
         chart.render_to_file(filename)
         logger.info("Wrote {}.".format(filename))
@@ -110,7 +111,8 @@ class ElectionData(object):
             legend_at_bottom=True)
 
         chart.add(
-            'constituents', constituents_by_hour[first_constituent_index:])
+            'constituents', self.constituents_by_hour[
+                self.first_constituent_index:])
 
         chart.render_to_file(filename)
         logger.info("Wrote {}.".format(filename))
@@ -127,8 +129,8 @@ class ElectionData(object):
             value_formatter=lambda n: str(int(n)),
             legend_at_bottom=True)
 
-        chart.add('constituents', list(sums(constituents_by_hour)))
-        chart.add('caucus', list(sums(caucus_by_hour)))
+        chart.add('constituents', list(sums(self.constituents_by_hour)))
+        chart.add('caucus', list(sums(self.caucus_by_hour)))
 
         chart.render_to_file(filename)
         logger.info("Wrote {}.".format(filename))
@@ -173,10 +175,14 @@ def main(*args):
         logger.info("Grouping caucuses by election.")
         caucus_by_reason = so_caucus.by_reason()
 
+        elections = {}
+
         for reason in constituents_by_reason:
             election = ElectionData(
                 constituent_badges=constituents_by_reason[reason],
                 caucus_badges=caucus_by_reason[reason])
+            assert elections.get(election.id) is None
+            elections[election.id] = election
 
             election.hello_graphs()
 
@@ -186,6 +192,31 @@ def main(*args):
 
         if not flags.intersection(['-e', '--forever']):
             break
+
+        filename = 'images/election-5-6-both-cumulative.svg'
+        logger.info("Generating {}.".format(filename))
+
+        chart = pygal.Line(
+            title="Election 5 and 6 Participation",
+            y_title="Users",
+            show_dots=False,
+            width=1024,
+            height=768,
+            value_formatter=lambda n: str(int(n)),
+            legend_at_bottom=True)
+
+        chart.add(
+            '5 constituents', list(sums(elections[5].constituents_by_hour)))
+        chart.add(
+            '5 caucus', list(sums(elections[5].caucus_by_hour)))
+
+        chart.add(
+            '6 constituents', list(sums(elections[6].constituents_by_hour)))
+        chart.add(
+            '6 caucus', list(sums(elections[6].caucus_by_hour)))
+
+        chart.render_to_file(filename)
+        logger.info("Wrote {}.".format(filename))
 
         logger.info("Sleeping for a while")
         time.sleep(60 * 5)
