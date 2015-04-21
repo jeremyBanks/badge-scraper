@@ -6,10 +6,10 @@ Scraping badge data from Stack Exchange and generating some graphs.
 
 ### Election Activity
 
-![](./images/election-6-both-per-hour.svg)  
-![](./images/election-5-both-per-hour.svg)  
-![](./images/election-4-both-per-hour.svg)  
-![](./images/election-3-both-per-hour.svg)  
+![](https://rawgit.com/jeremybanks/badge-scraper/master/images/election-6-both-per-hour.svg)  
+![](https://rawgit.com/jeremybanks/badge-scraper/master/images/election-5-both-per-hour.svg)  
+![](https://rawgit.com/jeremybanks/badge-scraper/master/images/election-4-both-per-hour.svg)  
+![](https://rawgit.com/jeremybanks/badge-scraper/master/images/election-3-both-per-hour.svg)  
 
 ## Run
 
