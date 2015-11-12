@@ -22,7 +22,10 @@ class ElectionData(object):
     def __init__(self, host, constituent_badges, caucus_badges):
         self.host = host
 
-        reason_html = constituent_badges[0].reason_html
+        if caucus_badges:
+            reason_html = caucus_badges[0].reason_html
+        else:
+            reason_html = constituent_badges[0].reason_html
 
         for badge in constituent_badges:
             assert reason_html == badge.reason_html
@@ -37,8 +40,15 @@ class ElectionData(object):
         self.constituent_badges = constituent_badges
         self.caucus_badges = caucus_badges
 
-        self.start_timestamp = self.caucus_badges[0].timestamp
-        self.election_timestamp = self.constituent_badges[0].timestamp
+        if caucus_badges:
+            self.start_timestamp = self.caucus_badges[0].timestamp
+        else:
+            self.start_timestamp = self.constituent_badges[0].timestamp
+
+        if constituent_badges:
+            self.election_timestamp = self.constituent_badges[0].timestamp
+        else:
+            self.election_timestamp = self.caucus_badges[-1].timestamp
 
         # We can't just look at the data, because there are some
         # badges awarded later than makes sense. Hope this doesn't
@@ -187,15 +197,41 @@ def main(*args):
 
         elections = {}
 
-        for reason in constituents_by_reason:
+        for reason in set(caucus_by_reason.keys()) | set(constituents_by_reason.keys()):
             election = ElectionData(
                 host='stackoverflow.com',
-                constituent_badges=constituents_by_reason[reason],
-                caucus_badges=caucus_by_reason[reason])
+                constituent_badges=constituents_by_reason.get(reason, []),
+                caucus_badges=caucus_by_reason.get(reason, []))
             assert elections.get(election.id) is None
             elections[election.id] = election
 
             election.hello_graphs()
+
+        # ELECTION 5 AND 6 AND 7 CAUCUS COMPARISON
+
+        filename = 'images/election-5-6-7-cumulative-caucus.svg'
+        logger.info("Generating {}.".format(filename))
+
+        chart = pygal.Line(
+            title="Election 5 and 6 and 7 Caucus",
+            y_title="Users",
+            show_dots=False,
+            width=1024,
+            height=768,
+            value_formatter=lambda n: str(int(n)),
+            legend_at_bottom=True)
+
+        chart.add(
+            '5 caucus', list(cumulative(elections[5].caucus_by_hour)))
+
+        chart.add(
+            '6 caucus', list(cumulative(elections[6].caucus_by_hour)))
+
+        chart.add(
+            '7 caucus', list(cumulative(elections[7].caucus_by_hour)))
+
+        chart.render_to_file(filename)
+        logger.info("Wrote {}.".format(filename))
 
         # ELECTION 5 AND 6 COMPARISON
 
