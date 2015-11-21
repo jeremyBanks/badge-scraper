@@ -7,7 +7,7 @@ Scraping badge data from Stack Exchange and generating some graphs.
 ### Election Activity
 
 ![](https://rawgit.com/jeremybanks/badge-scraper/master/images/election-5-6-7-cumulative-caucus.svg)  
-![](https://rawgit.com/jeremybanks/badge-scraper/master/images/election-5-6-both-cumulative.svg)  
+![](https://rawgit.com/jeremybanks/badge-scraper/master/images/election-5-6-7-both-cumulative.svg)  
 ![](https://rawgit.com/jeremybanks/badge-scraper/master/images/election-stackoverflow.com-6-both-per-hour.svg)  
 ![](https://rawgit.com/jeremybanks/badge-scraper/master/images/election-stackoverflow.com-5-both-per-hour.svg)  
 ![](https://rawgit.com/jeremybanks/badge-scraper/master/images/math-comparison-both-cumulative.svg)
