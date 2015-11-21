@@ -235,11 +235,11 @@ def main(*args):
 
         # ELECTION 5 AND 6 COMPARISON
 
-        filename = 'images/election-5-6-both-cumulative.svg'
+        filename = 'images/election-5-6-7-both-cumulative.svg'
         logger.info("Generating {}.".format(filename))
 
         chart = pygal.Line(
-            title="Election 5 and 6 Participation",
+            title="Election 5 and 6 and 7 Participation",
             y_title="Users",
             show_dots=False,
             width=1024,
@@ -256,6 +256,11 @@ def main(*args):
             '6 constituents', list(cumulative(elections[6].constituents_by_hour)))
         chart.add(
             '6 caucus', list(cumulative(elections[6].caucus_by_hour)))
+
+        chart.add(
+            '7 constituents', list(cumulative(elections[7].constituents_by_hour)))
+        chart.add(
+            '7 caucus', list(cumulative(elections[7].caucus_by_hour)))
 
         chart.render_to_file(filename)
         logger.info("Wrote {}.".format(filename))
