@@ -265,6 +265,56 @@ def main(*args):
         chart.render_to_file(filename)
         logger.info("Wrote {}.".format(filename))
 
+        # ELECTION 8 AND 9 AND 10 CAUCUS COMPARISON
+
+        filename = 'images/election-8-9-10-cumulative-caucus.svg'
+        logger.info("Generating {}.".format(filename))
+
+        chart = pygal.Line(
+            title="Election 8 and 9 and 10 Caucus",
+            y_title="Users",
+            show_dots=False,
+            width=1024,
+            height=768,
+            value_formatter=lambda n: str(int(n)),
+            legend_at_bottom=True)
+
+        chart.add(
+            '8 caucus', list(cumulative(elections[8].caucus_by_hour)))
+
+        chart.add(
+            '9 caucus', list(cumulative(elections[9].caucus_by_hour)))
+
+        chart.add(
+            '10 caucus', list(cumulative(elections[10].caucus_by_hour)))
+
+        chart.render_to_file(filename)
+        logger.info("Wrote {}.".format(filename))
+
+        # constituent
+
+        # All Election Constituents
+
+        filename = 'images/elections-cumulative-constituent.svg'
+        logger.info("Generating {}.".format(filename))
+
+        chart = pygal.Line(
+            title="Election Constituents",
+            y_title="Users",
+            show_dots=False,
+            width=1024,
+            height=768,
+            value_formatter=lambda n: str(int(n)),
+            legend_at_bottom=True)
+
+        for election_id, election in sorted(elections.items()):
+            chart.add(
+                '{} caucus'.format(election_id), list(cumulative(election.caucus_by_hour)))
+
+        chart.render_to_file(filename)
+        logger.info("Wrote {}.".format(filename))
+        
+
         # MATH ELECTION COMPARISON
 
         logger.info("Grouping math constituents by election.")

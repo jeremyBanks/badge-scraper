@@ -27,7 +27,7 @@ class BadgeData(collections.abc.Iterable):
     """
 
     FIELD_NAMES = 'user_id', 'utc_time'
-    REQUEST_INTERVAL_SECONDS = .5
+    REQUEST_INTERVAL_SECONDS = 1.5
     logger = logging.getLogger(__name__).getChild('BadgeData')
 
     def __init__(self, host, badge_id, instances=()):
@@ -99,7 +99,7 @@ class BadgeData(collections.abc.Iterable):
             # FIXME
             time.sleep(self.REQUEST_INTERVAL_SECONDS)
 
-            url = 'http://{}/help/badges/{}?page={}'.format(
+            url = 'https://{}/help/badges/{}?page={}'.format(
                 self.host, self.badge_id, page_number)
 
             response = requests.get(url)
