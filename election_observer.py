@@ -307,9 +307,9 @@ def main(*args):
             value_formatter=lambda n: str(int(n)),
             legend_at_bottom=True)
 
-        for election_id, election in sorted(elections.items()):
+        for election_id, election in sorted(elections.items())[4:]:
             chart.add(
-                '{} caucus'.format(election_id), list(cumulative(election.caucus_by_hour)))
+                'election {}'.format(election_id), list(cumulative(election.caucus_by_hour)))
 
         chart.render_to_file(filename)
         logger.info("Wrote {}.".format(filename))
