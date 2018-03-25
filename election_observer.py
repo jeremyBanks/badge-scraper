@@ -300,7 +300,7 @@ def main(*args):
 
         chart = pygal.Line(
             title="Cumulative Election Participation",
-            y_title="Voters",
+            y_title="Users",
             x_title="Hours",
             show_dots=False,
             width=1024,
@@ -319,6 +319,84 @@ def main(*args):
             chart.add(
                 '{} constituents'.format(election_id), list(cumulative(election.constituents_by_hour)))
 
+        chart.x_labels = [
+            str(hour)
+            for hour in range(hours)
+        ]
+        chart.truncate_legend = -1
+        chart.truncate_label = -1
+        chart.x_labels_major_every = 24
+        chart.show_minor_x_labels = False
+
+        chart.render_to_file(filename)
+        logger.info("Wrote {}.".format(filename))
+
+        # Hourly Election Constituents
+
+        filename = 'images/elections-hourly-all.svg'
+        logger.info("Generating {}.".format(filename))
+
+        chart = pygal.Line(
+            title="Hourly Election Participation",
+            y_title="Users",
+            x_title="Hour",
+            show_dots=False,
+            width=1024,
+            height=768,
+            value_formatter=lambda n: str(int(n)),
+            legend_at_bottom=True)
+        
+        hours = 0
+
+        chart.show_x_labels = True
+
+        for election_id, election in sorted(elections.items())[4:]:
+            hours = max([hours, len(election.caucus_by_hour), len(election.constituents_by_hour)])
+            chart.add(
+                '{} caucus'.format(election_id), list((election.caucus_by_hour)))
+            chart.add(
+                '{} constituents'.format(election_id), list((election.constituents_by_hour)))
+
+        chart.x_labels = [
+            str(hour)
+            for hour in range(hours)
+        ]
+        chart.truncate_legend = -1
+        chart.truncate_label = -1
+        chart.x_labels_major_every = 24
+        chart.show_minor_x_labels = False
+
+        chart.render_to_file(filename)
+        logger.info("Wrote {}.".format(filename))
+        
+
+        # Hourly Election Constituents
+
+        filename = 'images/elections-hourly-all-log.svg'
+        logger.info("Generating {}.".format(filename))
+
+        chart = pygal.Line(
+            title="Hourly Election Participation",
+            y_title="Users (Log)",
+            x_title="Hour",
+            show_dots=False,
+            width=1024,
+            height=768,
+            value_formatter=lambda n: str(int(n)),
+            legend_at_bottom=True)
+        
+        hours = 0
+
+        chart.show_x_labels = True
+
+        for election_id, election in sorted(elections.items())[4:]:
+            hours = max([hours, len(election.caucus_by_hour), len(election.constituents_by_hour)])
+            chart.add(
+                '{} caucus'.format(election_id), list((election.caucus_by_hour)))
+            chart.add(
+                '{} constituents'.format(election_id), list((election.constituents_by_hour)))
+
+        chart.logarithmic = True
         chart.x_labels = [
             str(hour)
             for hour in range(hours)
