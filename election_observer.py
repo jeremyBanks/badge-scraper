@@ -300,7 +300,8 @@ def main(*args):
 
         chart = pygal.Line(
             title="Election Constituents",
-            y_title="Users",
+            y_title="Voters",
+            x_title="Hours(?)",
             show_dots=False,
             width=1024,
             height=768,
@@ -309,7 +310,7 @@ def main(*args):
 
         for election_id, election in sorted(elections.items())[4:]:
             chart.add(
-                'election {}'.format(election_id), list(cumulative(election.caucus_by_hour)))
+                'election {}'.format(election_id), list(cumulative(election.constituents_by_hour)))
 
         chart.render_to_file(filename)
         logger.info("Wrote {}.".format(filename))
