@@ -295,22 +295,38 @@ def main(*args):
 
         # All Election Constituents
 
-        filename = 'images/elections-cumulative-constituent.svg'
+        filename = 'images/elections-cumulative-all.svg'
         logger.info("Generating {}.".format(filename))
 
         chart = pygal.Line(
-            title="Election Constituents",
+            title="Cumulative Election Participation",
             y_title="Voters",
-            x_title="Hours(?)",
+            x_title="Hours",
             show_dots=False,
             width=1024,
             height=768,
             value_formatter=lambda n: str(int(n)),
             legend_at_bottom=True)
+        
+        hours = 0
+
+        chart.show_x_labels = True
 
         for election_id, election in sorted(elections.items())[4:]:
+            hours = max([hours, len(election.caucus_by_hour), len(election.constituents_by_hour)])
             chart.add(
-                'election {}'.format(election_id), list(cumulative(election.constituents_by_hour)))
+                '{} caucus'.format(election_id), list(cumulative(election.caucus_by_hour)))
+            chart.add(
+                '{} constituents'.format(election_id), list(cumulative(election.constituents_by_hour)))
+
+        chart.x_labels = [
+            str(hour)
+            for hour in range(hours)
+        ]
+        chart.truncate_legend = -1
+        chart.truncate_label = -1
+        chart.x_labels_major_every = 24
+        chart.show_minor_x_labels = False
 
         chart.render_to_file(filename)
         logger.info("Wrote {}.".format(filename))
