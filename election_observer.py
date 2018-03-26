@@ -372,18 +372,24 @@ def main(*args):
 
         # Hourly Election Constituents
 
+        
+        from pygal.style import Style
+
         filename = 'images/elections-hourly-all-log.svg'
         logger.info("Generating {}.".format(filename))
 
         chart = pygal.Line(
             title="Hourly Election Participation",
-            y_title="Users (Log)",
-            x_title="Hour",
+            y_title="Users",
             show_dots=False,
-            width=1024,
-            height=768,
+            width=1400,
+            height=750,
             value_formatter=lambda n: str(int(n)),
-            legend_at_bottom=True)
+            legend_at_bottom=True,
+            style=Style(
+                font_family="arial",
+                colors=list(reversed(['#DD22DD44', '#DD222244', '#DDDD2244', '#22DD2244', '#22DDDD44', '#6666DD44'] +
+                ['#DD22DD', '#DD2222', '#DDDD22', '#22DD22', '#22DDDD', '#6666DD']))))
         
         hours = 0
 
@@ -392,14 +398,34 @@ def main(*args):
         for election_id, election in sorted(elections.items())[4:]:
             hours = max([hours, len(election.caucus_by_hour), len(election.constituents_by_hour)])
             chart.add(
-                '{} caucus'.format(election_id), list((election.caucus_by_hour)))
+                'election {} (eligible viewers)'.format(election_id), [max(x, 10) for x in election.caucus_by_hour]
+                )
+        for election_id, election in sorted(elections.items())[4:]:
+            hours = max([hours, len(election.caucus_by_hour), len(election.constituents_by_hour)])
             chart.add(
-                '{} constituents'.format(election_id), list((election.constituents_by_hour)))
+                'election {} (actual voters)'.format(election_id), [max(x, 10) for x in election.constituents_by_hour])
 
         chart.logarithmic = True
+        def label(h):
+            if h % 24 != 0:
+                return ""
+            elif h == 0:
+                return "Nomination"
+            elif h < 168:
+                return "Day {}".format(h // 24 + 1)
+            elif h == 168:
+                return "Primary"
+            elif h < 264:
+                return "Day {}".format((h - 168) // 24 + 1)
+            elif h == 264:
+                return "Election"
+            elif h < 360:
+                return "Day {}".format((h - 264) // 24 + 1)
+            else:
+                return "End"
+
         chart.x_labels = [
-            str(hour)
-            for hour in range(hours)
+            label(hour) for hour in range(hours)
         ]
         chart.truncate_legend = -1
         chart.truncate_label = -1
