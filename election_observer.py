@@ -171,6 +171,8 @@ def main(*args):
         host='stackoverflow.com', badge_id=3109, filename='sheriff')
     so_constituents, write_constituents = get_badge_data_and_write_function(
         host='stackoverflow.com', badge_id=1974, filename='constituent')
+    so_great_answers, write_great_answers = get_badge_data_and_write_function(
+        host='stackoverflow.com', badge_id=25, filename='great-answers')
     so_caucus, write_caucus = get_badge_data_and_write_function(
         host='stackoverflow.com', badge_id=1973, filename='caucus')
     math_constituents, write_math_constituents = get_badge_data_and_write_function(
@@ -181,8 +183,7 @@ def main(*args):
     while True:
         if not flags.intersection(['-n', '--no-update']):
             so_sheriffs.update()
-            if not flags.intersection(['-m', '--no-write']):
-                write_sherrifs()
+            so_great_answers.update()
 
             so_constituents.update()
             so_caucus.update()
@@ -481,13 +482,13 @@ def main(*args):
         chart.render_to_file(filename)
         logger.info("Wrote {}.".format(filename))
 
-
-
         if not flags.intersection(['-n', '--no-update', '-m', '--no-write']):
             write_constituents()
             write_caucus()
             write_math_constituents()
             write_math_caucus()
+            write_sherrifs()
+            write_great_answers()
 
         if not flags.intersection(['-e', '--forever']):
             break
